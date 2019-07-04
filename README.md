@@ -1,2 +1,2 @@
 # JRO-Backend
-This is the web service for Journal of Research Objects
+This is the API for Journal of Research Objects
