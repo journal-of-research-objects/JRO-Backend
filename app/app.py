@@ -1,5 +1,6 @@
 # Import flask and template operators
 from flask import Flask, render_template
+import os
 from docs import conf
 # Import SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
@@ -23,15 +24,26 @@ def not_found(error):
 
 
 
+# Import a module / component using its blueprint handler variable (mod_auth)
+from app.mod_auth.controllers import mod_auth
+
+# Register blueprint(s)
+app.register_blueprint(mod_auth)
+
+
 # Build the database:
 # This will create the database file using SQLAlchemy
 db.create_all()
 
+#
+# file_path = os.path.join(app.root_path, conf.TMP_DIR)
+# if not os.path.exists(file_path):
+#     os.makedirs(file_path)
 
 def main():
     """Main entry point of the app."""
     try:
-        app.run(host='0.0.0.0', debug=True, port=8000, use_reloader=True)
+        app.run(host='0.0.0.0', debug=True, port=8000, use_reloader=True,threaded=True)
     except Exception as exc:
         print(exc.message)
     finally:
