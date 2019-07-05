@@ -30,8 +30,8 @@ def signin():
     req = urllib.request.Request(conf.ORCID_API_URL+"token", data)
     with urllib.request.urlopen(req) as response:
         user_data = json.loads(response.read())
-        if not user_exists(user_data['orcid']):
-            create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
+        # if not user_exists(user_data['orcid']):
+        #     create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
         return jsonify(user_data)
 
 
