@@ -26,9 +26,11 @@ def not_found(error):
 
 # Import a module / component using its blueprint handler variable (mod_auth)
 from app.mod_auth.controllers import mod_auth
+from app.mod_github.controllers import mod_github
 
 # Register blueprint(s)
 app.register_blueprint(mod_auth)
+app.register_blueprint(mod_github)
 
 
 # Build the database:
