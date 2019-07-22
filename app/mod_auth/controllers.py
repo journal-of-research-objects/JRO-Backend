@@ -1,6 +1,7 @@
 # Import flask dependencies
 from flask import Blueprint, request, jsonify, json
 from flask_cors import CORS
+import requests
 import urllib
 from docs import conf
 # Import the database object from the main app module
@@ -14,7 +15,6 @@ from app.mod_auth.models import User
 mod_auth = Blueprint('auth', __name__)
 CORS(mod_auth)
 
-
 # Set the route and accepted methods
 @mod_auth.route('/login/', methods=['GET', 'OPTIONS'])
 def signin():
@@ -25,14 +25,21 @@ def signin():
               'code': auth_code,
               'redirect_uri': conf.ORCID_REDIRECT_URL
               }
-    data = urllib.parse.urlencode(params)
-    data = data.encode('ascii') # data should be bytes
-    req = urllib.request.Request(conf.ORCID_API_URL+"token", data)
-    with urllib.request.urlopen(req) as response:
-        user_data = json.loads(response.read())
-        # if not user_exists(user_data['orcid']):
-        #     create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
-        return jsonify(user_data)
+    hdr = { 'Content-Type' : 'application/x-www-form-urlencoded' }
+    # data = urllib.parse.urlencode(params).encode()
+    # req = urllib.request.Request(conf.ORCID_API_URL+"token", data=data, headers=hdr)
+    results = requests.post("https://sandbox.orcid.org/oauth/token",
+              params=params,
+              headers=hdr)
+    user_data = json.loads(results.text)
+    print(user_data)
+    return jsonify(user_data)
+    # with urllib.request.urlopen(req) as response:
+    #     print("---------DATA---------",data)
+    #     user_data = json.loads(response.read())
+    #     # if not user_exists(user_data['orcid']):
+    #     #     create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
+    #     return jsonify(user_data)
 
 
 def user_exists(orcid):
