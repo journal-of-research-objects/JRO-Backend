@@ -32,7 +32,7 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
-    print(user_data)
+    # print(user_data)
     return jsonify(user_data)
     # with urllib.request.urlopen(req) as response:
     #     print("---------DATA---------",data)
