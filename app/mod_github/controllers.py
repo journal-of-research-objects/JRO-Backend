@@ -4,6 +4,7 @@ from docs import conf # , sparql_templates as sparqlt
 from app.mod_auth.models import User
 # from SPARQLWrapper import SPARQLWrapper, JSON
 import urllib
+import requests
 
 mod_github = Blueprint('github', __name__)
 CORS(mod_github)
@@ -38,6 +39,26 @@ def get_repositories(access_token, orcid):
     # for repo in repos_data:
     #     repo['claimed'] = repo_exists(repo['html_url'], orcid)
     return repos_data
+
+
+@mod_github.route('/fork/', methods=['GET', 'OPTIONS'])
+def fork():
+    repo_url_fork = request.args.get('repo_url_fork')
+    params = {
+                'organization': conf.GITHUB_ORGANIZATION_NAME
+              }
+    # data = urllib.parse.urlencode(params)
+    # data = data.encode('ascii') # data should be bytes
+    hdr = {'Authorization': 'token %s' % conf.GITHUB_TOKEN}
+    results = requests.post(repo_url_fork,
+                        headers=hdr,
+                        params=params)
+    # req = urllib.request.Request(repo_url_fork, data)
+    # req.add_header('Accept', 'application/json')
+    # response = urllib.request.urlopen(req)
+    user_data = json.loads(results.text)
+    # print(user_data)
+    return jsonify(user_data)
 
 
 def repo_exists(repo_url, orcid):
