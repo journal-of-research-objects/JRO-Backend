@@ -45,7 +45,7 @@ db.create_all()
 def main():
     """Main entry point of the app."""
     try:
-        app.run(host='0.0.0.0', debug=True, port=8000, use_reloader=True,threaded=True)
+        app.run(host='0.0.0.0', debug=True, port=8001, use_reloader=True,threaded=True)
     except Exception as exc:
         print(exc.message)
     finally:
