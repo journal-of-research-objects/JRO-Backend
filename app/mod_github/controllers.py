@@ -13,7 +13,7 @@ CORS(mod_github)
 @mod_github.route('/github/', methods=['GET', 'OPTIONS'])
 def github_auth():
     auth_code = request.args.get('github_auth_code')
-    orcid = request.args.get('orcid')
+    # orcid = request.args.get('orcid')
     params = {'client_id': conf.GITHUB_CLIENT_ID,
               'client_secret': conf.GITHUB_SECRET,
               'code': auth_code
@@ -24,11 +24,13 @@ def github_auth():
     req.add_header('Accept', 'application/json')
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read())
-    repositories = get_repositories(user_data['access_token'], orcid)
+    repositories = get_repositories(user_data['access_token'])
+    # repositories = get_repositories(user_data['access_token'], orcid)
     return jsonify(repositories)
 
 
-def get_repositories(access_token, orcid):
+# def get_repositories(access_token, orcid):
+def get_repositories(access_token):
     req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?access_token=' + access_token)
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read())
