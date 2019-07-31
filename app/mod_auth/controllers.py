@@ -28,7 +28,7 @@ def signin():
     hdr = { 'Content-Type' : 'application/x-www-form-urlencoded' }
     # data = urllib.parse.urlencode(params).encode()
     # req = urllib.request.Request(conf.ORCID_API_URL+"token", data=data, headers=hdr)
-    results = requests.post("https://sandbox.orcid.org/oauth/token",
+    results = requests.post(conf.ORCID_API_URL+"token",
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
