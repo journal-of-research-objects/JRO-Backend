@@ -50,17 +50,27 @@ def fork():
     params = {
                 'organization': conf.GITHUB_ORGANIZATION_NAME
               }
-    # data = urllib.parse.urlencode(params)
-    # data = data.encode('ascii') # data should be bytes
     hdr = {'Authorization': 'token %s' % conf.GITHUB_TOKEN}
     results = requests.post(repo_url_fork,
                         headers=hdr,
                         params=params)
-    # req = urllib.request.Request(repo_url_fork, data)
-    # req.add_header('Accept', 'application/json')
-    # response = urllib.request.urlopen(req)
+
+    #CHANGE NAME
+    url_split = repo_url_fork.split("/")
+    repo_name = url_split[-2]
+    user_name = url_split[-3]
+
+    params = {'name': user_name+'-'+repo_name}
+    hdr = {
+            'Authorization': 'token %s' % conf.GITHUB_TOKEN,
+            'Content-Type': 'application/json',
+            'Accept': 'application/json'
+            }
+    repo_url = "https://api.github.com/repos/"+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_name
+    results = requests.patch(repo_url,
+                        json=params,
+                        headers=hdr)
     user_data = json.loads(results.text)
-    # print(user_data)
     return jsonify(user_data)
 
 
