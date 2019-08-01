@@ -42,7 +42,7 @@ def get_repositories(access_token):
     #     repo['claimed'] = repo_exists(repo['html_url'], orcid)
     return repos_data
 
-
+#repo_url_fork = https://api.github.com/repos/<user>/<repo>/forks
 @mod_github.route('/fork/', methods=['GET', 'OPTIONS'])
 def fork():
     repo_url_fork = request.args.get('repo_url_fork')
