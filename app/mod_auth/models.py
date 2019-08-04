@@ -2,7 +2,6 @@
 # We will define this inside /app/__init__.py in the next sections.
 from app.app import db
 
-
 # Define a base model for other database tables to inherit
 class Base(db.Model):
 
@@ -16,7 +15,7 @@ class Base(db.Model):
 
 # Define a User model
 class User(Base):
-    __tablename__ = 'auth_user'
+    __tablename__ = 'user'
 
     # User Name
     name = db.Column(db.String(128),  nullable=False)
@@ -25,6 +24,7 @@ class User(Base):
     orcid = db.Column(db.String(128),  nullable=False, unique=True)
     token = db.Column(db.String(192),  nullable=False)
     aka = db.Column(db.String(1000),  nullable=True)
+    repos = db.relationship('Repository', backref='user', lazy=True)
 
     def __init__(self, name, orcid, aka, token):
 

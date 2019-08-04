@@ -32,18 +32,15 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
-    # print(user_data)
+    # print("---------DATA---------",user_data)
+    if 'orcid' in user_data and not user_exists(user_data['orcid']):
+        create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
     return jsonify(user_data)
-    # with urllib.request.urlopen(req) as response:
-    #     print("---------DATA---------",data)
-    #     user_data = json.loads(response.read())
-    #     # if not user_exists(user_data['orcid']):
-    #     #     create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
-    #     return jsonify(user_data)
 
 
 def user_exists(orcid):
     user = User.query.filter_by(orcid=orcid).first()
+    print (user)
     return True if user else False
 
 
