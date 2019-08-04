@@ -90,3 +90,5 @@ ENV/
 .ropeproject
 
 **/conf.py
+
+flask_session/
