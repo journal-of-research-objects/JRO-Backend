@@ -34,6 +34,9 @@ def github_auth():
         if len(repositories) > 0:
             session['gh_logged'] = True
         return jsonify(repositories)
+    else:
+        raise Exception('not logged in Orcid')
+
 
 
 # def get_repositories(access_token, orcid):
@@ -99,7 +102,7 @@ def submit():
         # clone asynchronous
         # verify asynchronous
     else:
-        raise Exception('not logged in or not having repositories')
+        raise Exception('not logged in GitHub or not having repositories')
     return jsonify(user_data)
 
 
