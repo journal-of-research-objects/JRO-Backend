@@ -8,8 +8,6 @@ from app.mod_github.models import Repository
 import urllib
 import requests
 from git import Repo
-from flask_httpauth import HTTPBasicAuth
-auth = HTTPBasicAuth()
 
 mod_github = Blueprint('github', __name__)
 CORS(mod_github)
@@ -17,24 +15,25 @@ CORS(mod_github)
 
 @mod_github.route('/github/', methods=['GET', 'OPTIONS'])
 def github_auth():
-    auth_code = request.args.get('github_auth_code')
-    # orcid = request.args.get('orcid')
-    params = {'client_id': conf.GITHUB_CLIENT_ID,
-              'client_secret': conf.GITHUB_SECRET,
-              'code': auth_code
-              }
-    data = urllib.parse.urlencode(params)
-    data = data.encode('ascii') # data should be bytes
-    req = urllib.request.Request(conf.GITHUB_API_URL, data)
-    req.add_header('Accept', 'application/json')
-    response = urllib.request.urlopen(req)
-    user_data = json.loads(response.read())
-    print(user_data)
-    repositories = get_repositories(user_data['access_token'])
-    # repositories = get_repositories(user_data['access_token'], orcid)
-    if len(repositories) > 0:
-        session['gh_logged'] = True
-    return jsonify(repositories)
+    if 'orcid_logged' in session and session['orcid_logged']:
+        auth_code = request.args.get('github_auth_code')
+        # orcid = request.args.get('orcid')
+        params = {'client_id': conf.GITHUB_CLIENT_ID,
+                  'client_secret': conf.GITHUB_SECRET,
+                  'code': auth_code
+                  }
+        data = urllib.parse.urlencode(params)
+        data = data.encode('ascii') # data should be bytes
+        req = urllib.request.Request(conf.GITHUB_API_URL, data)
+        req.add_header('Accept', 'application/json')
+        response = urllib.request.urlopen(req)
+        user_data = json.loads(response.read())
+        print(user_data)
+        repositories = get_repositories(user_data['access_token'])
+        # repositories = get_repositories(user_data['access_token'], orcid)
+        if len(repositories) > 0:
+            session['gh_logged'] = True
+        return jsonify(repositories)
 
 
 # def get_repositories(access_token, orcid):
