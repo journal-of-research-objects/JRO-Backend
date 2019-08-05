@@ -97,7 +97,7 @@ def submit():
                      }
              results = requests.delete(repo_url_api,
                                  headers=hdr)
-             raise Exception('error creating repo in db: '+error)
+             raise Exception('error creating repo in db: '+str(error))
 
         # clone asynchronous
         # verify asynchronous
