@@ -14,6 +14,8 @@ sess = Session()
 # Configurations
 app.config.from_object('docs.conf')
 
+app.secret_key = 'super secret key'
+app.config['SESSION_TYPE'] = 'filesystem'
 
 # Define the database object which is imported
 # by modules and controllers
@@ -48,8 +50,6 @@ db.create_all()
 def main():
     """Main entry point of the app."""
     try:
-        app.secret_key = 'super secret key'
-        app.config['SESSION_TYPE'] = 'filesystem'
 
         sess.init_app(app)
         app.run(host='0.0.0.0', debug=True, port=8008, use_reloader=True,threaded=True)
