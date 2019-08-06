@@ -2,5 +2,4 @@ Flask==1.1.1
 requests==2.22.0
 Flask_Cors==3.0.8
 Flask_SQLAlchemy==2.4.0
-flask_session==0.3.1
 GitPython==2.1.13

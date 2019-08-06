@@ -1,6 +1,5 @@
 # Import flask and template operators
 from flask import Flask, render_template, session
-from flask_session import Session
 
 import os
 from docs import conf
@@ -9,13 +8,10 @@ from flask_sqlalchemy import SQLAlchemy
 
 # Define the WSGI application object
 app = Flask(__name__)
-sess = Session()
 
 # Configurations
 app.config.from_object('docs.conf')
 
-app.secret_key = 'super secret key'
-app.config['SESSION_TYPE'] = 'filesystem'
 
 # Define the database object which is imported
 # by modules and controllers
@@ -51,7 +47,6 @@ def main():
     """Main entry point of the app."""
     try:
 
-        sess.init_app(app)
         app.run(host='0.0.0.0', debug=True, port=8008, use_reloader=True,threaded=True)
     except Exception as exc:
         print(exc.message)

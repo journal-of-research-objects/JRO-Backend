@@ -1,5 +1,5 @@
 # Import flask dependencies
-from flask import Blueprint, request, jsonify, json, session
+from flask import Blueprint, request, jsonify, json
 from flask_cors import CORS
 import requests
 import urllib
@@ -32,9 +32,8 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
-    # print("---------DATA---------",user_data)
+    print("---------DATA---------",user_data)
     if 'orcid' in user_data:
-        session['orcid_logged'] = True
         if not user_exists(user_data['orcid']):
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
     return jsonify(user_data)
