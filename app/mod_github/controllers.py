@@ -8,6 +8,9 @@ from app.mod_github.models import Repository
 import urllib
 import requests
 from git import Repo
+import json
+import threading
+from app.mod_github.toipynb import verify_files, create_ipynb
 
 mod_github = Blueprint('github', __name__)
 CORS(mod_github)
@@ -47,8 +50,7 @@ def get_repositories(access_token):
     #     repo['claimed'] = repo_exists(repo['html_url'], orcid)
     return repos_data
 
-#repo_url_fork is the forks_url att of the repo object
-#repo_url_fork = https://api.github.com/repos/<user>/<repo>/forks
+
 @mod_github.route('/submit/', methods=['GET', 'OPTIONS'])
 def submit():
     repo_name = request.args.get('repo_name')
@@ -81,37 +83,101 @@ def submit():
     results = requests.patch(repo_url_api,
                         json=params,
                         headers=hdr)
-    user_data = json.loads(results.text)
+    repo_data = json.loads(results.text)
     try:
         create_repo(repo_url, fork_repo_url, "forked", orcid)
     except Exception as error:
-         hdr = {
-                 'Authorization': 'token %s' % conf.GITHUB_TOKEN,
-                 'Content-Type': 'application/json'
-                 }
-         results = requests.delete(repo_url_api,
-                             headers=hdr)
-         raise Exception('error creating repo in db: '+str(error))
+        delete_repo(repo_url_api)
+        raise Exception('error creating repo in db: '+str(error))
 
-    # clone asynchronous
+    # creating thread
+    t_verify = threading.Thread(target=create_nb, args=(fork_repo_url,fork_repo_name,))
+    # starting thread
+    t_verify.start()
+
     # verify asynchronous
+    return jsonify(repo_data)
 
 
+
+def delete_repo(url):
+    hdr = {
+             'Authorization': 'token %s' % conf.GITHUB_TOKEN,
+             'Content-Type': 'application/json'
+             }
+    results = requests.delete(url,
+                         headers=hdr)
 
 def create_repo(ori_url, fork_url, state, owner):
     repo = Repository(ori_url=ori_url, fork_url=fork_url, state=state, owner=owner)
     db.session.add(repo)
     db.session.commit()
 
-def clone(repo_url):
-    Repo.clone_from("repo_url", "../../../")
+def create_nb(repo_url, repo_name):
+    path_clone = "../"+repo_name+"/"
+    # path_clone = "/home/brayan_admin/"+repo_name
+    #clone
+    try:
+        Repo.clone_from(repo_url, path_clone)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.state = "error:clone:"+str(error)
+        db.session.commit()
+        raise Exception("error:clone:"+str(error))
+
+    #verify_files to create ipynb
+    try:
+        if not verify_files(path_clone):
+            repo = Repository.query.filter_by(fork_url=repo_url).first()
+            repo.state = "error:verify:not exist"
+            db.session.commit()
+            raise Exception("error:verify:not exist")
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.state = "error:verify:"+str(error)
+        db.session.commit()
+        raise Exception("error:verify:"+str(error))
+
+    #create ipynb
+    try:
+        create_ipynb(path_clone)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.state = "error:nbcreation:"+str(error)
+        db.session.commit()
+        raise Exception("error:nbcreation:"+str(error))
+
+    repo = Repository.query.filter_by(fork_url=repo_url).first()
+    repo.state = "submitted"
+    db.session.commit()
+
+
+@mod_github.route('/deletesubmitted/', methods=['GET', 'OPTIONS'])
+def deletesubmitted():
+    #delete from github
+    forked_url = request.args.get('forked_url')
+    delete_repo(forked_url)
+
+    #delete from bd
+    repo = Repository.query.filter_by(fork_url=forked_url).first()
+    db.session.delete(repo)
+    db.session.commit()
 
 
 
-def repo_exists(repo_url, orcid):
-    sparql = SPARQLWrapper(conf.SPARQL_QUERY_ENDPOINT)
-    orcid = 'http://orcid.org/' + orcid
-    query = sparqlt.RO_EXIST.format(orcid=orcid, share_url=repo_url)
-    sparql.setQuery(query)
-    sparql.setReturnFormat(JSON)
-    return bool(sparql.query().convert()['boolean'])
+@mod_github.route('/listsubmitted/', methods=['GET', 'OPTIONS'])
+def listsubmitted():
+    repos_sub = Repository.query.filter_by(state="forked").all()
+    repos_json = [x.as_dict() for x in repos_sub]
+    return jsonify(repos_json)
+
+
+
+#
+# def repo_exists(repo_url, orcid):
+#     sparql = SPARQLWrapper(conf.SPARQL_QUERY_ENDPOINT)
+#     orcid = 'http://orcid.org/' + orcid
+#     query = sparqlt.RO_EXIST.format(orcid=orcid, share_url=repo_url)
+#     sparql.setQuery(query)
+#     sparql.setReturnFormat(JSON)
+#     return bool(sparql.query().convert()['boolean'])

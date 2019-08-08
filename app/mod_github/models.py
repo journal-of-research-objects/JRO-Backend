@@ -2,7 +2,11 @@
 # We will define this inside /app/__init__.py in the next sections.
 from app.app import db
 
+from datetime import datetime
 
+def _try(o):
+    try: return o.__dict__
+    except: return str(o)
 
 # Define a base model for other database tables to inherit
 class Base(db.Model):
@@ -19,9 +23,10 @@ class Base(db.Model):
 class Repository(Base):
     __tablename__ = 'repository'
 
-    ori_url = db.Column(db.String(1000),  nullable=False)
-    fork_url = db.Column(db.String(1000),  nullable=False)
-    state = db.Column(db.String(128),  nullable=False, unique=True)
+    ori_url = db.Column(db.String(1000),  nullable=False, unique=True)
+    fork_url = db.Column(db.String(1000),  nullable=False, unique=True)
+    state = db.Column(db.String(1000),  nullable=True)
+    date_submitted = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow)
     owner = db.Column(db.String(128), db.ForeignKey('user.orcid'), nullable=False)
 
     def __init__(self, ori_url, fork_url, state, owner):
@@ -33,3 +38,7 @@ class Repository(Base):
 
     def __repr__(self):
         return '<Repo %r>' % self.ori_url
+
+    def as_dict(self):
+       # return {c.name: getattr(self, c.name) for c in self.__table__.columns}
+       return {c.name: str(getattr(self, c.name)) for c in self.__table__.columns} # to support datetime
