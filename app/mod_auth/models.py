@@ -24,7 +24,7 @@ class User(Base):
     orcid = db.Column(db.String(128),  nullable=False, unique=True)
     token = db.Column(db.String(192),  nullable=False)
     aka = db.Column(db.String(1000),  nullable=True)
-    role = db.Column(db.String(128),  nullable=False)
+    role = db.Column(db.String(128),  nullable=True)
     repos = db.relationship('Repository', backref='user', lazy=True)
 
     def __init__(self, name, orcid, aka, token):
