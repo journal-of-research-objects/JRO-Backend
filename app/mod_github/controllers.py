@@ -46,9 +46,17 @@ def get_repositories(access_token):
     req.add_header('Accept', 'application/json')
     response = urllib.request.urlopen(req)
     repos_data = json.loads(response.read())
-    # for repo in repos_data:
-    #     repo['claimed'] = repo_exists(repo['html_url'], orcid)
+    for repo in repos_data:
+        repo['status'] = repo_stat(repo['html_url'])
     return repos_data
+
+
+def repo_stat(repo_url):
+    status = ""
+    repo = Repository.query.filter_by(ori_url=repo_url).first()
+    if repo:
+        status= repo.status
+    return status
 
 
 @mod_github.route('/submit/', methods=['GET', 'OPTIONS'])
@@ -108,8 +116,8 @@ def delete_repo(url):
     results = requests.delete(url,
                          headers=hdr)
 
-def create_repo(ori_url, fork_url, state, owner):
-    repo = Repository(ori_url=ori_url, fork_url=fork_url, state=state, owner=owner)
+def create_repo(ori_url, fork_url, status, owner):
+    repo = Repository(ori_url=ori_url, fork_url=fork_url, status=status, owner=owner)
     db.session.add(repo)
     db.session.commit()
 
@@ -121,7 +129,7 @@ def create_nb(repo_url, repo_name):
         Repo.clone_from(repo_url, path_clone)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
-        repo.state = "error:clone:"+str(error)
+        repo.status = "error:clone:"+str(error)
         db.session.commit()
         raise Exception("error:clone:"+str(error))
 
@@ -129,12 +137,12 @@ def create_nb(repo_url, repo_name):
     try:
         if not verify_files(path_clone):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
-            repo.state = "error:verify:not exist"
+            repo.status = "error:verify:not exist"
             db.session.commit()
             raise Exception("error:verify:not exist")
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
-        repo.state = "error:verify:"+str(error)
+        repo.status = "error:verify:"+str(error)
         db.session.commit()
         raise Exception("error:verify:"+str(error))
 
@@ -143,12 +151,12 @@ def create_nb(repo_url, repo_name):
         create_ipynb(path_clone)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
-        repo.state = "error:nbcreation:"+str(error)
+        repo.status = "error:nbcreation:"+str(error)
         db.session.commit()
         raise Exception("error:nbcreation:"+str(error))
 
     repo = Repository.query.filter_by(fork_url=repo_url).first()
-    repo.state = "submitted"
+    repo.status = "submitted"
     db.session.commit()
 
 
@@ -167,17 +175,6 @@ def deletesubmitted():
 
 @mod_github.route('/listsubmitted/', methods=['GET', 'OPTIONS'])
 def listsubmitted():
-    repos_sub = Repository.query.filter_by(state="forked").all()
+    repos_sub = Repository.query.filter_by(status="forked").all()
     repos_json = [x.as_dict() for x in repos_sub]
     return jsonify(repos_json)
-
-
-
-#
-# def repo_exists(repo_url, orcid):
-#     sparql = SPARQLWrapper(conf.SPARQL_QUERY_ENDPOINT)
-#     orcid = 'http://orcid.org/' + orcid
-#     query = sparqlt.RO_EXIST.format(orcid=orcid, share_url=repo_url)
-#     sparql.setQuery(query)
-#     sparql.setReturnFormat(JSON)
-#     return bool(sparql.query().convert()['boolean'])

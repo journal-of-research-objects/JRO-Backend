@@ -25,15 +25,15 @@ class Repository(Base):
 
     ori_url = db.Column(db.String(1000),  nullable=False, unique=True)
     fork_url = db.Column(db.String(1000),  nullable=False, unique=True)
-    state = db.Column(db.String(1000),  nullable=True)
+    status = db.Column(db.String(1000),  nullable=True)
     date_submitted = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow)
     owner = db.Column(db.String(128), db.ForeignKey('user.orcid'), nullable=False)
 
-    def __init__(self, ori_url, fork_url, state, owner):
+    def __init__(self, ori_url, fork_url, status, owner):
 
         self.ori_url = ori_url
         self.fork_url = fork_url
-        self.state = state
+        self.status = status
         self.owner = owner
 
     def __repr__(self):
