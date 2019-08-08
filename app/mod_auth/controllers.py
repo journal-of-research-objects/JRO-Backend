@@ -38,6 +38,32 @@ def signin():
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
     return jsonify(user_data)
 
+@mod_auth.route('/logineditor/', methods=['GET', 'OPTIONS'])
+def signin_editor():
+    auth_code = request.args.get('orcid_auth_code')
+    params = {'client_id': conf.ORCID_CLIENT_ID,
+              'client_secret': conf.ORCID_SECRET,
+              'grant_type': 'authorization_code',
+              'code': auth_code,
+              'redirect_uri': conf.ORCID_REDIRECT_URL
+              }
+    hdr = { 'Content-Type' : 'application/x-www-form-urlencoded' }
+    # data = urllib.parse.urlencode(params).encode()
+    # req = urllib.request.Request(conf.ORCID_API_URL+"token", data=data, headers=hdr)
+    results = requests.post(conf.ORCID_API_URL+"token",
+              params=params,
+              headers=hdr)
+    user_data = json.loads(results.text)
+    print("---------DATA---------",user_data)
+    if 'orcid' in user_data and user_exists(user_data['orcid']) and is_editor(user_data['orcid']):
+        return jsonify(user_data)
+    else:
+        raise Exception('not editor')
+
+def is_editor(orcid):
+    user = User.query.filter_by(orcid=orcid).first()
+    return user.role=="editor"
+
 
 def user_exists(orcid):
     user = User.query.filter_by(orcid=orcid).first()
