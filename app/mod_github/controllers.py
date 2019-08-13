@@ -11,6 +11,9 @@ from git import Repo
 import json
 import threading
 from app.mod_github.toipynb import verify_files, create_ipynb
+import shutil
+
+
 
 mod_github = Blueprint('github', __name__)
 CORS(mod_github)
@@ -67,7 +70,7 @@ def submit():
     orcid = request.args.get('orcid')
 
     #FORK
-    repo_url = "https://github.com/"+user_name+"/"+repo_name+".git"
+    repo_url = "https://github.com/"+user_name+"/"+repo_name
     repo_url_fork = "https://api.github.com/repos/"+user_name+"/"+repo_name+"/forks"
     params = {
                 'organization': conf.GITHUB_ORGANIZATION_NAME
@@ -80,7 +83,7 @@ def submit():
     #CHANGE NAME
 
     fork_repo_name = user_name+"-"+repo_name
-    fork_repo_url = "https://github.com/"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name+".git"
+    fork_repo_url = "https://github.com/"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name
 
     params = {'name': fork_repo_name}
     hdr = {
@@ -123,8 +126,7 @@ def create_repo(ori_url, fork_url, status, owner):
     db.session.commit()
 
 def create_nb(repo_url, repo_name):
-    path_clone = "../"+repo_name+"/"
-    # path_clone = "/home/brayan_admin/"+repo_name
+    path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone
     try:
         Repo.clone_from(repo_url, path_clone)
@@ -160,17 +162,46 @@ def create_nb(repo_url, repo_name):
     repo.status = "submitted"
     db.session.commit()
 
+import errno, os, stat, shutil
+
+def on_rm_error( func, path, exc_info):
+    # path contains the path of the file that couldn't be removed
+    # let's just assume that it's read-only and unlink it.
+    os.chmod( path, stat.S_IWRITE )
+    os.unlink( path )
 
 @mod_github.route('/deletesubmitted/', methods=['GET', 'OPTIONS'])
 def deletesubmitted():
-    #delete from github
     forked_url = request.args.get('forked_url')
-    delete_repo(forked_url)
+    #delete from github
+    try:
+        delete_repo(forked_url)
+    except:
+       print('Error while deleting gh repo'+str(error))
+       return jsonify({'status':'Error while deleting gh repo'}), 500
 
     #delete from bd
-    repo = Repository.query.filter_by(fork_url=forked_url).first()
-    db.session.delete(repo)
-    db.session.commit()
+    try:
+        repo = Repository.query.filter_by(fork_url=forked_url).first()
+        db.session.delete(repo)
+        db.session.commit()
+    except Exception as error:
+        print('Error while deleting db record'+str(error))
+        return jsonify({'status':'Error while deleting db record'}), 500
+
+    repo_name= forked_url.split("/")[-1]
+    #delete clone
+    path_clone= conf.PATH_CLONE+repo_name
+    # Delete all contents of a directory using shutil.rmtree() and  handle exceptions
+    try:
+       shutil.rmtree(path_clone,  onerror = on_rm_error)
+    except Exception as error:
+       print('Error while deleting directory'+str(error))
+       return jsonify({'status':'Error while deleting directory'}), 500
+
+    return jsonify({'status':'success'})
+
+
 
 
 
