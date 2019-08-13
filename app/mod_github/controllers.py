@@ -32,7 +32,7 @@ def github_auth():
     user_data = json.loads(response.read())
     print(user_data)
     # repositories = get_repositories(user_data['access_token'], orcid)
-    return jsonify(user_data['access_token'])
+    return jsonify(user_data)
 
 
 
