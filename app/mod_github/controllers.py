@@ -49,7 +49,7 @@ def get_repositories():
     repos_data = json.loads(response.read())
     for repo in repos_data:
         repo['status'] = repo_stat(repo['html_url'])
-    return repos_data
+    return jsonify(repos_data)
 
 
 def repo_stat(repo_url):
