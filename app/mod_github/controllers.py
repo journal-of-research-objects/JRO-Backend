@@ -31,14 +31,15 @@ def github_auth():
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read())
     print(user_data)
-    repositories = get_repositories(user_data['access_token'])
     # repositories = get_repositories(user_data['access_token'], orcid)
-    return jsonify(repositories)
+    return jsonify(user_data['access_token'])
 
 
 
 # def get_repositories(access_token, orcid):
-def get_repositories(access_token):
+@mod_github.route('/get_repositories/', methods=['GET', 'OPTIONS'])
+def get_repositories():
+    access_token = request.args.get('access_token')
     req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?access_token=' + access_token)
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read())
@@ -175,6 +176,6 @@ def deletesubmitted():
 
 @mod_github.route('/listsubmitted/', methods=['GET', 'OPTIONS'])
 def listsubmitted():
-    repos_sub = Repository.query.filter_by(status="forked").all()
+    repos_sub = Repository.query.filter_by(status="submitted").all()
     repos_json = [x.as_dict() for x in repos_sub]
     return jsonify(repos_json)
