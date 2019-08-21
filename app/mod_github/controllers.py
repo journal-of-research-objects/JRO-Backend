@@ -114,15 +114,15 @@ def submit():
     # verify asynchronous
     return jsonify(repo_data)
 
-
-
-def delete_repo(url):
-    hdr = {
-             'Authorization': 'token %s' % conf.GITHUB_TOKEN,
-             'Content-Type': 'application/json'
-             }
-    results = requests.delete(url,
-                         headers=hdr)
+#
+#
+# def delete_repo(url):
+#     hdr = {
+#              'Authorization': 'token %s' % conf.GITHUB_TOKEN,
+#              'Content-Type': 'application/json'
+#              }
+#     results = requests.delete(url,
+#                          headers=hdr)
 
 def create_repo(ori_url, fork_url, status, owner):
     repo = Repository(ori_url=ori_url, fork_url=fork_url, status=status, owner=owner)
@@ -179,7 +179,9 @@ def deletesubmitted():
     forked_url = request.args.get('forked_url')
     #delete from github
     try:
-        delete_repo(forked_url)
+        url_shorten = forked_url.replace('https://github.com/', '')
+        repo = g.get_repo(url_shorten)
+        repo.delete()
     except Exception as error:
        print('Error while deleting gh repo'+str(error))
        return jsonify({'status':'Error while deleting gh repo'}), 500
