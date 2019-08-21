@@ -180,7 +180,7 @@ def deletesubmitted():
     #delete from github
     try:
         delete_repo(forked_url)
-    except:
+    except Exception as error:
        print('Error while deleting gh repo'+str(error))
        return jsonify({'status':'Error while deleting gh repo'}), 500
 
