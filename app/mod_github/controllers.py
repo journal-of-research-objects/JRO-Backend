@@ -53,16 +53,18 @@ def get_repositories():
     response = urllib.request.urlopen(req)
     repos_data = json.loads(response.read())
     for repo in repos_data:
-        repo['status'] = repo_stat(repo['html_url'])
+        repo['status'], repo['forked_url'] = repo_stat(repo['html_url'])
     return jsonify(repos_data)
 
 
 def repo_stat(repo_url):
-    status = ""
+    status = "initial"
+    fork_url = ''
     repo = Repository.query.filter_by(ori_url=repo_url).first()
     if repo:
-        status= repo.status
-    return status
+        status = repo.status
+        fork_url = repo.fork_url
+    return status, fork_url
 
 
 @mod_github.route('/submit/', methods=['GET', 'OPTIONS'])
