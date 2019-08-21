@@ -3,3 +3,4 @@ requests==2.22.0
 Flask_Cors==3.0.8
 Flask_SQLAlchemy==2.4.0
 GitPython==2.1.13
+PyGithub==1.43.8
