@@ -12,7 +12,9 @@ import json
 import threading
 from app.mod_github.toipynb import verify_files, create_ipynb
 import shutil
-
+from github import Github
+# or using an access token
+g = Github(conf.GITHUB_TOKEN)
 
 
 mod_github = Blueprint('github', __name__)
@@ -202,11 +204,33 @@ def deletesubmitted():
     return jsonify({'status':'success'})
 
 
-
-
-
-@mod_github.route('/listsubmitted/', methods=['GET', 'OPTIONS'])
-def listsubmitted():
-    repos_sub = Repository.query.filter_by(status="submitted").all()
+@mod_github.route('/list/', methods=['GET', 'OPTIONS'])
+def list():
+    status = request.args.get('status')
+    repos_sub = Repository.query.filter_by(status=status).all()
     repos_json = [x.as_dict() for x in repos_sub]
     return jsonify(repos_json)
+
+
+@mod_github.route('/publish/', methods=['GET', 'OPTIONS'])
+def publish():
+    #DB
+    try:
+        fork_url = request.args.get('fork_url')
+        repo = Repository.query.filter_by(fork_url=fork_url).first()
+        repo.status = "published"
+        db.session.commit()
+    except Exception as error:
+       print('Error while changing status'+str(error))
+       return jsonify({'status':'Error while changing status'}), 500
+
+    #GH Reelease
+    try:
+        url_shorten = fork_url.replace('https://github.com/', '')
+        repo = g.get_repo(url_shorten)
+        repo.create_git_release("v1.0", "v1.0", "v1.0")
+    except Exception as error:
+       print('Error while gh releasing'+str(error))
+       return jsonify({'status':'Error while gh releasing'}), 500
+
+    return jsonify({'status':'success'})
