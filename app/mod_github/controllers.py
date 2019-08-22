@@ -34,7 +34,7 @@ def github_auth():
     req = urllib.request.Request(conf.GITHUB_API_URL, data)
     req.add_header('Accept', 'application/json')
     response = urllib.request.urlopen(req)
-    user_data = json.loads(response.read())
+    user_data = json.loads(response.read().decode('utf-8'))
     print(user_data)
     # repositories = get_repositories(user_data['access_token'], orcid)
     return jsonify(user_data)
@@ -47,11 +47,11 @@ def get_repositories():
     access_token = request.args.get('access_token')
     req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?access_token=' + access_token)
     response = urllib.request.urlopen(req)
-    user_data = json.loads(response.read())
+    user_data = json.loads(response.read().decode('utf-8'))
     req = urllib.request.Request(user_data['repos_url'])
     req.add_header('Accept', 'application/json')
     response = urllib.request.urlopen(req)
-    repos_data = json.loads(response.read())
+    repos_data = json.loads(response.read().decode('utf-8'))
     for repo in repos_data:
         repo['status'], repo['forked_url'] = repo_stat(repo['html_url'])
     return jsonify(repos_data)
@@ -101,7 +101,7 @@ def submit():
                         headers=hdr)
     repo_data = json.loads(results.text)
     try:
-        create_repo(repo_url, fork_repo_url, "forked", orcid)
+        create_repo(repo_name, repo_url, fork_repo_url, "forked", orcid)
     except Exception as error:
         delete_repo(fork_repo_url)
         raise Exception('error creating repo in db: '+str(error))
@@ -121,8 +121,8 @@ def delete_repo(url):
     repo = g.get_repo(url_shorten)
     repo.delete()
 
-def create_repo(ori_url, fork_url, status, owner):
-    repo = Repository(ori_url=ori_url, fork_url=fork_url, status=status, owner=owner)
+def create_repo(name, ori_url, fork_url, status, owner):
+    repo = Repository(name=name, ori_url=ori_url, fork_url=fork_url, status=status, owner=owner)
     db.session.add(repo)
     db.session.commit()
 
