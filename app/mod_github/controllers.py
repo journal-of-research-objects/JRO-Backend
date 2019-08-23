@@ -101,7 +101,7 @@ def submit():
                         headers=hdr)
     repo_data = json.loads(results.text)
     try:
-        create_repo(repo_name, repo_url, fork_repo_url, "forked", orcid)
+        create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", orcid)
     except Exception as error:
         delete_repo(fork_repo_url)
         raise Exception('error creating repo in db: '+str(error))
