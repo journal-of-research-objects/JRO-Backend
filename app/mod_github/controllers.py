@@ -45,7 +45,7 @@ def github_auth():
 @mod_github.route('/get_repositories/', methods=['GET', 'OPTIONS'])
 def get_repositories():
     access_token = request.args.get('access_token')
-    req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?access_token=' + access_token)
+    req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?per_page=100&access_token=' + access_token)
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read().decode('utf-8'))
     req = urllib.request.Request(user_data['repos_url'])
