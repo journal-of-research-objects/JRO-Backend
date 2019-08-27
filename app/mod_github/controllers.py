@@ -11,7 +11,7 @@ from git import Repo
 import json
 import threading
 from app.mod_github.toipynb import verify_files, create_ipynb
-import shutil
+import errno, os, stat, shutil
 from github import Github
 # or using an access token
 g = Github(conf.GITHUB_TOKEN)
@@ -107,7 +107,7 @@ def submit():
         raise Exception('error creating repo in db: '+str(error))
 
     # creating thread
-    t_verify = threading.Thread(target=create_nb, args=(fork_repo_url,fork_repo_name,))
+    t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url,fork_repo_name,))
     # starting thread
     t_verify.start()
 
@@ -126,7 +126,23 @@ def create_repo(name, ori_url, fork_url, status, owner):
     db.session.add(repo)
     db.session.commit()
 
-def create_nb(repo_url, repo_name):
+@mod_github.route('/regenerate_nb/', methods=['GET', 'OPTIONS'])
+def regenerate_nb():
+    forked_url = request.args.get('forked_url')
+    repo_name = request.args.get('repo_name')
+
+    path_clone = conf.PATH_CLONE+repo_name+"/"
+    repo = Repo(path_clone)
+    o = repo.remotes.origin
+    o.pull()
+    try:
+        create_nb(forked_url, repo_name)
+    except Exception as error:
+        print('Error while creating nb'+str(error))
+        return jsonify({'status':'Error while creating nb'}), 500
+    return jsonify({'status':'success'})
+
+def clone_create_nb(repo_url, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone
     try:
@@ -136,7 +152,11 @@ def create_nb(repo_url, repo_name):
         repo.status = "error:clone:"+str(error)
         db.session.commit()
         raise Exception("error:clone:"+str(error))
+    create_nb(repo_url, repo_name)
 
+
+def create_nb(repo_url, repo_name):
+    path_clone= conf.PATH_CLONE+repo_name+"/"
     #verify_files to create ipynb
     try:
         if not verify_files(path_clone):
@@ -163,7 +183,6 @@ def create_nb(repo_url, repo_name):
     repo.status = "submitted"
     db.session.commit()
 
-import errno, os, stat, shutil
 
 def on_rm_error( func, path, exc_info):
     # path contains the path of the file that couldn't be removed
@@ -211,11 +230,28 @@ def list():
     return jsonify(repos_json)
 
 
+def git_push(path_clone_git, commit_msg):
+    repo = Repo(path_clone_git)
+    repo.index.add("*")
+    repo.index.commit(commit_msg)
+    origin = repo.remote(name='origin')
+    origin.push()
+
 @mod_github.route('/publish/', methods=['GET', 'OPTIONS'])
 def publish():
+    fork_url = request.args.get('fork_url')
+    repo_name = request.args.get('repo_name')
+    #GH push
+    path_clone= conf.PATH_CLONE+repo_name+"/"
+    path_clone_git = path_clone+".git"
+    commit_msg="published version with notebook"
+    try:
+        git_push(path_clone_git, commit_msg)
+    except Exception as error:
+       print('Error gh pushing'+str(error))
+       return jsonify({'status':'Error while gh pushing'}), 500
     #DB
     try:
-        fork_url = request.args.get('fork_url')
         repo = Repository.query.filter_by(fork_url=fork_url).first()
         repo.status = "published"
         db.session.commit()
