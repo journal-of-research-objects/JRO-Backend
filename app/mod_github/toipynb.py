@@ -29,7 +29,7 @@ def create_ipynb(path):
     f = io.open(path+MD_PATH, mode="r", encoding="utf-8")
     # f = open(path+MD_PATH, 'r')
 
-    text = f.read().decode()
+    text = f.read()
 
     f.close()
 
