@@ -2,6 +2,7 @@ import nbformat as nbf
 from pip._internal import main
 import os
 import subprocess
+import io
 
 
 REQUIREMENTS_PATH = "requirements.txt"
@@ -25,7 +26,8 @@ def create_ipynb(path):
 
     nb = nbf.v4.new_notebook()
 
-    f = open(path+MD_PATH, 'r')
+    f = io.open(path+MD_PATH, mode="r", encoding="utf-8")
+    # f = open(path+MD_PATH, 'r')
 
     text = f.read().decode()
 
