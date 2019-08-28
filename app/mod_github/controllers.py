@@ -89,6 +89,8 @@ def submit():
     fork_repo_name = user_name+"-"+repo_name
     fork_repo_url = "https://github.com/"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name
 
+    fork_repo_ssh = "git@github.com:"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name+".git"
+
     params = {'name': fork_repo_name}
     hdr = {
             'Authorization': 'token %s' % conf.GITHUB_TOKEN,
@@ -107,7 +109,7 @@ def submit():
         raise Exception('error creating repo in db: '+str(error))
 
     # creating thread
-    t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url,fork_repo_name,))
+    t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name,))
     # starting thread
     t_verify.start()
 
@@ -142,11 +144,11 @@ def regenerate_nb():
         return jsonify({'status':'Error while creating nb'}), 500
     return jsonify({'status':'success'})
 
-def clone_create_nb(repo_url, repo_name):
+def clone_create_nb(repo_url, repo_ssh, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone
     try:
-        Repo.clone_from(repo_url, path_clone)
+        Repo.clone_from(repo_ssh, path_clone)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:clone:"+str(error)
