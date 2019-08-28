@@ -163,9 +163,9 @@ def create_nb(repo_url, repo_name):
     try:
         if not verify_files(path_clone):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
-            repo.status = "error:verify:not exist"
+            repo.status = "error:verify not exist:"
             db.session.commit()
-            raise Exception("error:verify:not exist")
+            raise Exception("error:verify not exist:")
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:verify:"+str(error)
