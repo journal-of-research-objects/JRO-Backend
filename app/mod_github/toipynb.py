@@ -27,7 +27,7 @@ def create_ipynb(path):
 
     f = open(path+MD_PATH, 'r')
 
-    text = f.read().decode('utf-8')
+    text = f.read().decode()
 
     f.close()
 
