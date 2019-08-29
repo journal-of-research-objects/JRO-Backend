@@ -16,7 +16,7 @@ def verify_files(path):
 def create_ipynb(path):
     #Install libraries
 
-    subprocess.check_call(["python", '-m', 'pip', 'install', '-r', path+REQUIREMENTS_PATH]) # install pkg
+    # subprocess.check_call(["python", '-m', 'pip', 'install', '-r', path+REQUIREMENTS_PATH]) # install pkg
 
     # pip.main(['install', '-r', path+REQUIREMENTS_PATH, '--user'])
     # pip.main(['install', '-r', REQUIREMENTS_PATH])

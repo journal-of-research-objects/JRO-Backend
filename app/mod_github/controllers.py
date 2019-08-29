@@ -181,6 +181,17 @@ def create_nb(repo_url, repo_name):
         db.session.commit()
         raise Exception("error:nbcreation:"+str(error))
 
+    #GH push
+    path_clone_git = path_clone+".git"
+    commit_msg="review in progress"
+    try:
+        git_push(path_clone_git, commit_msg)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:ghpushing:"+str(error)
+        db.session.commit()
+        raise Exception('Error while gh pushing'+str(error))
+
     repo = Repository.query.filter_by(fork_url=repo_url).first()
     repo.status = "submitted"
     db.session.commit()
