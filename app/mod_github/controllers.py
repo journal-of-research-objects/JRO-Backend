@@ -106,7 +106,8 @@ def submit():
         create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", orcid)
     except Exception as error:
         delete_repo(fork_repo_url)
-        raise Exception('error creating repo in db: '+str(error))
+        print(str(error))
+        return jsonify({'status':'error creating repo in db')
 
     # creating thread
     t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name,))
@@ -153,7 +154,8 @@ def clone_create_nb(repo_url, repo_ssh, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:clone:"+str(error)
         db.session.commit()
-        raise Exception("error:clone:"+str(error))
+        print(str(error))
+        raise Exception("error:clone:")
     create_nb(repo_url, repo_name)
 
 
@@ -170,7 +172,8 @@ def create_nb(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:verify:"+str(error)
         db.session.commit()
-        raise Exception("error:verify:"+str(error))
+        print(str(error))
+        raise Exception("error:verify:")
 
     #create ipynb
     try:
@@ -179,7 +182,8 @@ def create_nb(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:nbcreation:"+str(error)
         db.session.commit()
-        raise Exception("error:nbcreation:"+str(error))
+        print(str(error))
+        raise Exception("error:nbcreation:")
 
     #GH push
     path_clone_git = path_clone+".git"
@@ -190,7 +194,8 @@ def create_nb(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:ghpushing:"+str(error)
         db.session.commit()
-        raise Exception('Error while gh pushing'+str(error))
+        print(str(error))
+        raise Exception('Error while gh pushing')
 
     repo = Repository.query.filter_by(fork_url=repo_url).first()
     repo.status = "submitted"
