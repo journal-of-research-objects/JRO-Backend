@@ -107,7 +107,7 @@ def submit():
     except Exception as error:
         delete_repo(fork_repo_url)
         print(str(error))
-        return jsonify({'status':'error creating repo in db')
+        return jsonify({'status':'error creating repo in db'), 500
 
     # creating thread
     t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name,))
