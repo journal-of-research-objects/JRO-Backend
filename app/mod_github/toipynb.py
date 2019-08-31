@@ -1,9 +1,8 @@
 import nbformat as nbf
-from pip._internal import main
 import os
 import subprocess
 import io
-
+import virtualenv
 
 REQUIREMENTS_PATH = "requirements.txt"
 MD_PATH = "paper.md"
@@ -13,14 +12,40 @@ IPYNB_PATH = "paper.ipynb"
 def verify_files(path):
     return os.path.exists(path+REQUIREMENTS_PATH) and os.path.exists(path+MD_PATH)
 
-def create_ipynb(path):
-    #Install libraries
 
-    # subprocess.check_call(["python", '-m', 'pip', 'install', '-r', path+REQUIREMENTS_PATH]) # install pkg
+# create the virtual environment and add it to kernel
+def create_venv(path, repo_name):
+    venv_dir = os.path.join(path, "venv")
+    virtualenv.create_environment(venv_dir)
+    python_dir = os.path.join(venv_dir, "bin/python")
+    # python_dir = os.path.join(venv_dir, "Scripts/python.exe") # windows
+    subprocess.check_call([python_dir, '-m', 'pip', 'install', 'ipykernel']) # install ipykernel
+    subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--user', '--name', repo_name]) # install ipykernel
 
+
+# add venv folder to gitignore
+def add_venv_gitignore(path_gitignore):
+    elem = "venv/"
+    if os.path.isfile(path_gitignore):
+        f=open(path_gitignore, "a+")
+        f.write(elem)
+    else:
+        f= open(path_gitignore,"w+")
+        f.write(elem)
+        f.close()
+
+
+#Install libraries
+def install_libs(path):
+    python_dir = os.path.join(path, "venv/bin/python")
+    # python_dir = os.path.join(path, "venv/Scripts/python.exe") # windows
+    subprocess.check_call([python_dir, '-m', 'pip', 'install', '-r', path+REQUIREMENTS_PATH]) # install pkg
     # pip.main(['install', '-r', path+REQUIREMENTS_PATH, '--user'])
     # pip.main(['install', '-r', REQUIREMENTS_PATH])
 
+
+
+def create_ipynb(path):
 
     #Build Jupyter Notebook
 

@@ -10,7 +10,7 @@ import requests
 from git import Repo
 import json
 import threading
-from app.mod_github.toipynb import verify_files, create_ipynb
+from app.mod_github.toipynb import verify_files, create_ipynb, create_venv, install_libs, add_venv_gitignore
 import errno, os, stat, shutil
 from github import Github
 # or using an access token
@@ -107,7 +107,7 @@ def submit():
     except Exception as error:
         delete_repo(fork_repo_url)
         print(str(error))
-        return jsonify({'status':'error creating repo in db'), 500
+        return jsonify({'status':'error creating repo in db'}), 500
 
     # creating thread
     t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name,))
@@ -156,7 +156,37 @@ def clone_create_nb(repo_url, repo_ssh, repo_name):
         db.session.commit()
         print(str(error))
         raise Exception("error:clone:")
+    print(repo_name+": cloned")
+
+    venv(repo_url, repo_name)
+    print(repo_name+": venv created")
+
+    path_gitignore = os.path.join(path_clone, ".gitignore")
+    try:
+        add_venv_gitignore(path_gitignore)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:add_venv_gitignore:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:add_venv_gitignore")
+    print(repo_name+": venv gitignored")
+
     create_nb(repo_url, repo_name)
+
+
+def venv(repo_url, repo_name):
+    path_clone= conf.PATH_CLONE+repo_name+"/"
+    #create venv and kernel
+    try:
+        create_venv(path_clone, repo_name)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:venvcreation:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:venvcreation:")
+
 
 
 def create_nb(repo_url, repo_name):
@@ -175,6 +205,20 @@ def create_nb(repo_url, repo_name):
         print(str(error))
         raise Exception("error:verify:")
 
+    print(repo_name+": files verified")
+
+    #install libs
+    try:
+        install_libs(path_clone)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:libs:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:libs:")
+
+    print(repo_name+": libs installed")
+
     #create ipynb
     try:
         create_ipynb(path_clone)
@@ -185,17 +229,20 @@ def create_nb(repo_url, repo_name):
         print(str(error))
         raise Exception("error:nbcreation:")
 
-    #GH push
-    path_clone_git = path_clone+".git"
-    commit_msg="review in progress"
-    try:
-        git_push(path_clone_git, commit_msg)
-    except Exception as error:
-        repo = Repository.query.filter_by(fork_url=repo_url).first()
-        repo.status = "error:ghpushing:"+str(error)
-        db.session.commit()
-        print(str(error))
-        raise Exception('Error while gh pushing')
+    print(repo_name+": ipynb created")
+    #
+    # #GH push
+    # path_clone_git = path_clone+".git"
+    # commit_msg="review in progress"
+    # try:
+    #     git_push(path_clone_git, commit_msg)
+    # except Exception as error:
+    #     repo = Repository.query.filter_by(fork_url=repo_url).first()
+    #     repo.status = "error:ghpushing:"+str(error)
+    #     db.session.commit()
+    #     print(str(error))
+    #     raise Exception('Error while gh pushing')
+    # print(repo_name+": pushed")
 
     repo = Repository.query.filter_by(fork_url=repo_url).first()
     repo.status = "submitted"
