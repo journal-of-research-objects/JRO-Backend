@@ -6,7 +6,12 @@ import urllib
 from docs import conf
 # Import the database object from the main app module
 from app.app import db
-
+from flask_jwt_extended import (
+    JWTManager,
+    jwt_required,
+    create_access_token,
+    get_jwt_identity,
+)
 
 # Import module models (i.e. User)
 from app.mod_auth.models import User
@@ -32,11 +37,22 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
+    access_token = create_access_token(identity=user_data)
+    print(access_token)
     print("---------DATA---------",user_data)
     if 'orcid' in user_data:
         if not user_exists(user_data['orcid']):
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
-    return jsonify(user_data)
+    return jsonify(access_token=access_token)
+
+
+
+@mod_auth.route("/profile/", methods=["GET", "OPTIONS"])
+@jwt_required
+def profile():
+    current_user = get_jwt_identity()
+    return jsonify(current_user), 200
+
 
 @mod_auth.route('/logineditor/', methods=['GET', 'OPTIONS'])
 def signin_editor():
@@ -54,11 +70,13 @@ def signin_editor():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
+    access_token = create_access_token(identity=user_data)
+    print(access_token)
     print("---------DATA---------",user_data)
     if 'orcid' in user_data and user_exists(user_data['orcid']) and is_editor(user_data['orcid']):
-        return jsonify(user_data)
+        return jsonify(access_token=access_token)
     else:
-        raise Exception('not editor')
+        return jsonify({'status':'not editor'}), 500
 
 def is_editor(orcid):
     user = User.query.filter_by(orcid=orcid).first()

@@ -5,13 +5,20 @@ import os
 from docs import conf
 # Import SQLAlchemy
 from flask_sqlalchemy import SQLAlchemy
+from flask_jwt_extended import (
+    JWTManager,
+    jwt_required,
+    create_access_token,
+    get_jwt_identity,
+)
 
 # Define the WSGI application object
 app = Flask(__name__)
 
 # Configurations
 app.config.from_object('docs.conf')
-
+app.config["JWT_SECRET_KEY"] = conf.JWT_SECRET
+jwt = JWTManager(app)
 
 # Define the database object which is imported
 # by modules and controllers

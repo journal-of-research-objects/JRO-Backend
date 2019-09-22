@@ -13,6 +13,12 @@ import threading
 from app.mod_github.toipynb import verify_files, create_ipynb, create_venv, install_libs, add_venv_gitignore
 import errno, os, stat, shutil
 from github import Github
+from flask_jwt_extended import (
+    JWTManager,
+    jwt_required,
+    create_access_token,
+    get_jwt_identity,
+)
 # or using an access token
 g = Github(conf.GITHUB_TOKEN)
 
@@ -22,6 +28,7 @@ CORS(mod_github)
 
 
 @mod_github.route('/github/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def github_auth():
     auth_code = request.args.get('github_auth_code')
     # orcid = request.args.get('orcid')
