@@ -50,6 +50,7 @@ def github_auth():
 
 # def get_repositories(access_token, orcid):
 @mod_github.route('/get_repositories/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def get_repositories():
     access_token = request.args.get('access_token')
     req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?access_token=' + access_token)
@@ -75,6 +76,7 @@ def repo_stat(repo_url):
 
 
 @mod_github.route('/submit/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def submit():
     repo_name = request.args.get('repo_name')
     user_name = request.args.get('user_name')
@@ -137,6 +139,7 @@ def create_repo(name, ori_url, fork_url, status, owner):
     db.session.commit()
 
 @mod_github.route('/regenerate_nb/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def regenerate_nb():
     forked_url = request.args.get('forked_url')
     repo_name = request.args.get('repo_name')
@@ -263,6 +266,7 @@ def on_rm_error( func, path, exc_info):
     os.unlink( path )
 
 @mod_github.route('/deletesubmitted/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def deletesubmitted():
     forked_url = request.args.get('forked_url')
     #delete from github
@@ -295,6 +299,7 @@ def deletesubmitted():
 
 
 @mod_github.route('/list/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def list():
     status = request.args.get('status')
     repos_sub = Repository.query.filter_by(status=status).all()
@@ -310,6 +315,7 @@ def git_push(path_clone_git, commit_msg):
     origin.push()
 
 @mod_github.route('/publish/', methods=['GET', 'OPTIONS'])
+@jwt_required
 def publish():
     fork_url = request.args.get('fork_url')
     repo_name = request.args.get('repo_name')
