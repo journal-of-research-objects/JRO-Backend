@@ -27,7 +27,7 @@ mod_github = Blueprint('github', __name__)
 CORS(mod_github)
 
 
-@mod_github.route('/github/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/github/', methods=['GET'])
 @jwt_required
 def github_auth():
     auth_code = request.args.get('github_auth_code')
@@ -49,7 +49,7 @@ def github_auth():
 
 
 # def get_repositories(access_token, orcid):
-@mod_github.route('/get_repositories/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/get_repositories/', methods=['GET'])
 @jwt_required
 def get_repositories():
     access_token = request.args.get('access_token')
@@ -75,7 +75,7 @@ def repo_stat(repo_url):
     return status, fork_url
 
 
-@mod_github.route('/submit/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/submit/', methods=['GET'])
 @jwt_required
 def submit():
     repo_name = request.args.get('repo_name')
@@ -138,7 +138,7 @@ def create_repo(name, ori_url, fork_url, status, owner):
     db.session.add(repo)
     db.session.commit()
 
-@mod_github.route('/regenerate_nb/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/regenerate_nb/', methods=['GET'])
 @jwt_required
 def regenerate_nb():
     forked_url = request.args.get('forked_url')
@@ -265,7 +265,7 @@ def on_rm_error( func, path, exc_info):
     os.chmod( path, stat.S_IWRITE )
     os.unlink( path )
 
-@mod_github.route('/deletesubmitted/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/deletesubmitted/', methods=['GET'])
 @jwt_required
 def deletesubmitted():
     forked_url = request.args.get('forked_url')
@@ -298,7 +298,7 @@ def deletesubmitted():
     return jsonify({'status':'success'})
 
 
-@mod_github.route('/list/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/list/', methods=['GET'])
 @jwt_required
 def list():
     status = request.args.get('status')
@@ -314,7 +314,7 @@ def git_push(path_clone_git, commit_msg):
     origin = repo.remote(name='origin')
     origin.push()
 
-@mod_github.route('/publish/', methods=['GET', 'OPTIONS'])
+@mod_github.route('/publish/', methods=['GET'])
 @jwt_required
 def publish():
     fork_url = request.args.get('fork_url')
