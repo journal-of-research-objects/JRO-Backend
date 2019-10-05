@@ -307,6 +307,13 @@ def list():
     return jsonify(repos_json)
 
 
+@mod_github.route('/listpub/', methods=['GET'])
+def list_pub():
+    repos_sub = Repository.query.filter_by(status='published').all()
+    repos_json = [x.as_dict() for x in repos_sub]
+    return jsonify(repos_json)
+
+
 def git_push(path_clone_git, commit_msg):
     repo = Repo(path_clone_git)
     repo.index.add("*")
