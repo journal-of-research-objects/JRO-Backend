@@ -18,6 +18,7 @@ app = Flask(__name__)
 # Configurations
 app.config.from_object('docs.conf')
 app.config["JWT_SECRET_KEY"] = conf.JWT_SECRET
+app.config["JWT_ACCESS_TOKEN_EXPIRES"] = int(conf.JWT_EXPIRES)
 jwt = JWTManager(app)
 
 # Define the database object which is imported
