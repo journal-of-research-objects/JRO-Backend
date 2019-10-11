@@ -7,11 +7,11 @@ import virtualenv
 REQUIREMENTS_PATH = "requirements.txt"
 MD_PATH = "paper.md"
 IPYNB_PATH = "paper.ipynb"
+REF_PATH = "references.bib"
 
 #path with slash at the end
 def verify_files(path):
-    return os.path.exists(path+REQUIREMENTS_PATH) and os.path.exists(path+MD_PATH)
-
+    return os.path.exists(path+REQUIREMENTS_PATH) and os.path.exists(path+MD_PATH) and os.path.exists(path+REF_PATH)
 
 # create the virtual environment and add it to kernel
 def create_venv(path, repo_name):
