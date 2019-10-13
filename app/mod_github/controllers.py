@@ -75,12 +75,17 @@ def repo_stat(repo_url):
     return status, fork_url
 
 
-@mod_github.route('/submit/', methods=['GET'])
+@mod_github.route('/submit/', methods=['POST'])
 @jwt_required
 def submit():
-    repo_name = request.args.get('repo_name')
-    user_name = request.args.get('user_name')
-    orcid = request.args.get('orcid')
+    data = request.get_json()
+    print(data)
+    repo_name = data['repo_name']
+    user_name = data['user_name']
+    orcid = data['orcid']
+
+    authors = data['authors']
+    keywords = data['keywords']
 
     #FORK
     repo_url = "https://github.com/"+user_name+"/"+repo_name
@@ -119,7 +124,7 @@ def submit():
         return jsonify({'status':'error creating repo in db'}), 500
 
     # creating thread
-    t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name,))
+    t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     # starting thread
     t_verify.start()
 
@@ -155,7 +160,7 @@ def regenerate_nb():
         return jsonify({'status':'Error while creating nb'}), 500
     return jsonify({'status':'success'})
 
-def clone_create_nb(repo_url, repo_ssh, repo_name):
+def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone
     try:
@@ -168,9 +173,22 @@ def clone_create_nb(repo_url, repo_ssh, repo_name):
         raise Exception("error:clone:")
     print(repo_name+": cloned")
 
+    #create metadata file
+    try:
+        create_metadata(authors, keywords, path_clone)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:metadata:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:metadata:")
+    print(repo_name+": metadata file created")
+    
+    #create venv and kernel
     venv(repo_url, repo_name)
     print(repo_name+": venv created")
 
+    #add venv to gitignore
     path_gitignore = os.path.join(path_clone, ".gitignore")
     try:
         add_venv_gitignore(path_gitignore)
@@ -182,7 +200,20 @@ def clone_create_nb(repo_url, repo_ssh, repo_name):
         raise Exception("error:add_venv_gitignore")
     print(repo_name+": venv gitignored")
 
+    #create nb
     create_nb(repo_url, repo_name)
+
+def create_metadata(authors, keywords, path_clone):
+    try:
+        metadata = {
+            "authors": authors,
+            "keywords": keywords
+        }
+
+        with open(path_clone+'metadata.json', 'w') as outfile:
+            json.dump(metadata, outfile)
+    except Exception as error:
+        raise Exception(str(error))
 
 
 def venv(repo_url, repo_name):
@@ -310,7 +341,15 @@ def list():
 @mod_github.route('/listpub/', methods=['GET'])
 def list_pub():
     repos_sub = Repository.query.filter_by(status='published').all()
-    repos_json = [x.as_dict() for x in repos_sub]
+    repos_json = []
+    for x in repos_sub:
+        dic = x.as_dict()
+        response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+dic['name']+"/master/metadata.json")
+        metadata = json.loads(response.read().decode('utf-8'))
+        dic['metadata'] = metadata
+        print(dic)
+        repos_json.append(dic)
+
     return jsonify(repos_json)
 
 
