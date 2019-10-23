@@ -300,13 +300,6 @@ def on_rm_error( func, path, exc_info):
 @jwt_required
 def deletesubmitted():
     forked_url = request.args.get('forked_url')
-    #delete from github
-    try:
-        delete_repo(forked_url)
-    except Exception as error:
-       print('Error while deleting gh repo'+str(error))
-       return jsonify({'status':'Error while deleting gh repo'}), 500
-
     #delete from bd
     try:
         repo = Repository.query.filter_by(fork_url=forked_url).first()
@@ -316,10 +309,16 @@ def deletesubmitted():
         print('Error while deleting db record'+str(error))
         return jsonify({'status':'Error while deleting db record'}), 500
 
+    #delete from github
+    try:
+        delete_repo(forked_url)
+    except Exception as error:
+       print('Error while deleting gh repo'+str(error))
+       return jsonify({'status':'Error while deleting gh repo'}), 500
+
     repo_name= forked_url.split("/")[-1]
     #delete clone
     path_clone= conf.PATH_CLONE+repo_name
-    # Delete all contents of a directory using shutil.rmtree() and  handle exceptions
     try:
        shutil.rmtree(path_clone,  onerror = on_rm_error)
     except Exception as error:
