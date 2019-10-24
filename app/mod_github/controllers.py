@@ -7,6 +7,7 @@ from app.mod_github.models import Repository
 # from SPARQLWrapper import SPARQLWrapper, JSON
 import urllib
 import requests
+import re
 from git import Repo
 import json
 import threading
@@ -61,18 +62,34 @@ def get_repositories():
     response = urllib.request.urlopen(req)
     repos_data = json.loads(response.read().decode('utf-8'))
     for repo in repos_data:
-        repo['status'], repo['forked_url'] = repo_stat(repo['html_url'])
+        repo['status'] = repo_stat(repo['html_url'])
+        repo['forked_url'] = repo_fork_url(repo['html_url'])
     return jsonify(repos_data)
 
 
 def repo_stat(repo_url):
     status = "initial"
-    fork_url = ''
     repo = Repository.query.filter_by(ori_url=repo_url).first()
     if repo:
         status = repo.status
+        if ("error" in status):
+            colon = [m.start() for m in re.finditer(r":",status)][1] # 2nd colon
+            status = status[:colon]
+    return status
+
+def repo_fork_url(repo_url):
+    fork_url = ''
+    repo = Repository.query.filter_by(ori_url=repo_url).first()
+    if repo:
         fork_url = repo.fork_url
-    return status, fork_url
+    return fork_url
+
+@mod_github.route('/get_status_repo/', methods=['GET'])
+@jwt_required
+def get_status_repo():
+    repo_url = request.args.get('repo_url')
+    status = repo_stat(repo_url)
+    return jsonify(status=status)
 
 
 @mod_github.route('/submit/', methods=['POST'])
