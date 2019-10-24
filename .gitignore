@@ -91,4 +91,6 @@ ENV/
 
 **/conf.py
 
+docs/app.db
+
 flask_session/
