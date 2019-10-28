@@ -64,6 +64,10 @@ def get_repositories():
     for repo in repos_data:
         repo['status'] = repo_stat(repo['html_url'])
         repo['forked_url'] = repo_fork_url(repo['html_url'])
+        if repo['status'] == "published":
+            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo['owner']['login']+"-"+repo['name']+"/master/metadata.json")
+            metadata = json.loads(response.read().decode('utf-8'))
+            repo['metadata'] = metadata
     return jsonify(repos_data)
 
 
