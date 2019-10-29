@@ -54,7 +54,7 @@ def github_auth():
 @jwt_required
 def get_repositories():
     access_token = request.args.get('access_token')
-    req = urllib.request.Request(conf.GITHUB_USER_API_URL + '?access_token=' + access_token)
+    req = urllib.request.Request(conf.GITHUB_REPOS_API_URL+'user' + '?access_token=' + access_token)
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read().decode('utf-8'))
     req = urllib.request.Request(user_data['repos_url']+'?per_page=1000')
@@ -367,9 +367,12 @@ def list_pub():
         response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+dic['name']+"/master/metadata.json")
         metadata = json.loads(response.read().decode('utf-8'))
         dic['metadata'] = metadata
+        url_shorten = dic['ori_url'].replace('https://github.com/', '')
+        response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+        properties = json.loads(response.read().decode('utf-8'))
+        dic.update(properties)
         print(dic)
         repos_json.append(dic)
-
     return jsonify(repos_json)
 
 
