@@ -137,6 +137,8 @@ def submit():
                         json=params,
                         headers=hdr)
     repo_data = json.loads(results.text)
+
+    print(repo_data)
     try:
         create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", orcid)
     except Exception as error:
@@ -354,7 +356,15 @@ def deletesubmitted():
 def list():
     status = request.args.get('status')
     repos_sub = Repository.query.filter_by(status=status).all()
-    repos_json = [x.as_dict() for x in repos_sub]
+    repos_json = []
+    for x in repos_sub:
+        dic = x.as_dict()
+        url_shorten = dic['ori_url'].replace('https://github.com/', '')
+        response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+        properties = json.loads(response.read().decode('utf-8'))
+        dic['properties'] = properties
+        print(dic)
+        repos_json.append(dic)
     return jsonify(repos_json)
 
 
@@ -370,7 +380,7 @@ def list_pub():
         url_shorten = dic['ori_url'].replace('https://github.com/', '')
         response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
         properties = json.loads(response.read().decode('utf-8'))
-        dic.update(properties)
+        dic['properties'] = properties
         print(dic)
         repos_json.append(dic)
     return jsonify(repos_json)
