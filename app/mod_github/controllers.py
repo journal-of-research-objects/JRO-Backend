@@ -130,7 +130,7 @@ def submit():
 
         fork_repo_ssh = "git@github.com:"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name+".git"
 
-        params = {'name': fork_repo_name}
+        params = {'name': fork_repo_name, 'has_issues': True}
         hdr = {
                 'Authorization': 'token %s' % conf.GITHUB_TOKEN,
                 'Content-Type': 'application/json',
