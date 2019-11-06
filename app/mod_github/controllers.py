@@ -109,36 +109,46 @@ def submit():
     keywords = data['keywords']
 
     #FORK
-    repo_url = "https://github.com/"+user_name+"/"+repo_name
-    repo_url_fork = "https://api.github.com/repos/"+user_name+"/"+repo_name+"/forks"
-    params = {
-                'organization': conf.GITHUB_ORGANIZATION_NAME
-              }
-    hdr = {'Authorization': 'token %s' % conf.GITHUB_TOKEN}
-    results = requests.post(repo_url_fork,
-                        headers=hdr,
-                        params=params)
+    try:
+        repo_url = "https://github.com/"+user_name+"/"+repo_name
+        repo_url_fork = conf.GITHUB_REPOS_API_URL+"repos/"+user_name+"/"+repo_name+"/forks"
+        params = {
+                    'organization': conf.GITHUB_ORGANIZATION_NAME
+                }
+        hdr = {'Authorization': 'token %s' % conf.GITHUB_TOKEN}
+        results = requests.post(repo_url_fork,
+                            headers=hdr,
+                            params=params)
+    except Exception as error:
+        print(str(error))
+        return jsonify({'status':'error forking'}), 500
 
     #CHANGE NAME
+    try:
+        fork_repo_name = user_name+"-"+repo_name
+        fork_repo_url = "https://github.com/"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name
 
-    fork_repo_name = user_name+"-"+repo_name
-    fork_repo_url = "https://github.com/"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name
+        fork_repo_ssh = "git@github.com:"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name+".git"
 
-    fork_repo_ssh = "git@github.com:"+conf.GITHUB_ORGANIZATION_NAME+"/"+fork_repo_name+".git"
+        params = {'name': fork_repo_name}
+        hdr = {
+                'Authorization': 'token %s' % conf.GITHUB_TOKEN,
+                'Content-Type': 'application/json',
+                'Accept': 'application/json'
+                }
+        repo_url_api = conf.GITHUB_REPOS_API_URL+"repos/"+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_name
+        results = requests.patch(repo_url_api,
+                            json=params,
+                            headers=hdr)
+        repo_data = json.loads(results.text)
 
-    params = {'name': fork_repo_name}
-    hdr = {
-            'Authorization': 'token %s' % conf.GITHUB_TOKEN,
-            'Content-Type': 'application/json',
-            'Accept': 'application/json'
-            }
-    repo_url_api = "https://api.github.com/repos/"+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_name
-    results = requests.patch(repo_url_api,
-                        json=params,
-                        headers=hdr)
-    repo_data = json.loads(results.text)
+        print("---------------repo_data------------------")
+        print(repo_data)
+    except Exception as error:
+        delete_repo(fork_repo_url)
+        print(str(error))
+        return jsonify({'status':'error changing name'}), 500
 
-    print(repo_data)
     try:
         create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", orcid)
     except Exception as error:
