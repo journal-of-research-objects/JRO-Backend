@@ -21,7 +21,7 @@ def create_venv(path, repo_name):
     # python_dir = os.path.join(venv_dir, "Scripts/python.exe") # windows
     subprocess.check_call([python_dir, '-m', 'pip', 'install', 'ipykernel']) # install ipykernel
     subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--name', repo_name]) # install ipykernel
-    # subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--user', '--name', repo_name]) # install ipykernel
+    # subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--user', '--name', repo_name]) # install ipykernel windows
 
 
 # add venv folder to gitignore
