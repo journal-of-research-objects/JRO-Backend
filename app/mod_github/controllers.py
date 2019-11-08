@@ -10,6 +10,7 @@ import requests
 import re
 from git import Repo
 import json
+import math
 import threading
 from app.mod_github.toipynb import verify_files, create_ipynb, create_venv, install_libs, add_venv_gitignore
 import errno, os, stat, shutil
@@ -57,10 +58,23 @@ def get_repositories():
     req = urllib.request.Request(conf.GITHUB_REPOS_API_URL+'user' + '?access_token=' + access_token)
     response = urllib.request.urlopen(req)
     user_data = json.loads(response.read().decode('utf-8'))
-    req = urllib.request.Request(user_data['repos_url']+'?per_page=1000')
-    req.add_header('Accept', 'application/json')
-    response = urllib.request.urlopen(req)
-    repos_data = json.loads(response.read().decode('utf-8'))
+
+    params = {'page': 1, 'per_page':100}
+    another_page = True
+    repos_url = user_data['repos_url']
+    repos_data = []
+    hdr = {
+            'Accept': 'application/json'
+            }
+    while another_page: #the list of repos is paginated
+        r = requests.get(repos_url, params=params, headers=hdr)
+        json_response = json.loads(r.text)
+        repos_data+= json_response
+        if 'next' in r.links: #check if there is another page of repos
+            params['page'] = params['page']+1
+        else:
+            another_page=False
+    
     for repo in repos_data:
         repo['status'] = repo_stat(repo['html_url'])
         repo['forked_url'] = repo_fork_url(repo['html_url'])
@@ -362,38 +376,71 @@ def deletesubmitted():
 
 
 @mod_github.route('/list/', methods=['GET'])
-@jwt_required
-def list():
+def list_rep():
     status = request.args.get('status')
-    repos_sub = Repository.query.filter_by(status=status).all()
-    repos_json = []
-    for x in repos_sub:
-        dic = x.as_dict()
-        url_shorten = dic['ori_url'].replace('https://github.com/', '')
-        response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
-        properties = json.loads(response.read().decode('utf-8'))
-        dic['properties'] = properties
-        print(dic)
-        repos_json.append(dic)
-    return jsonify(repos_json)
+    page = request.args.get('page')
+    per_page = request.args.get('per_page')
 
+    # default
+    if status is None:
+        status = 'published'
+    if page is None:
+        page = 1
+    else:
+        page = int(page)
+    if per_page is None:
+        per_page = 1
+    else:
+        per_page = int(per_page)
 
-@mod_github.route('/listpub/', methods=['GET'])
-def list_pub():
-    repos_sub = Repository.query.filter_by(status='published').all()
+    repos_sub = Repository.query.filter_by(status=status).paginate(page=page, per_page=per_page, max_per_page=100).items
     repos_json = []
-    for x in repos_sub:
-        dic = x.as_dict()
-        response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+dic['name']+"/master/metadata.json")
-        metadata = json.loads(response.read().decode('utf-8'))
-        dic['metadata'] = metadata
-        url_shorten = dic['ori_url'].replace('https://github.com/', '')
-        response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
-        properties = json.loads(response.read().decode('utf-8'))
-        dic['properties'] = properties
-        print(dic)
-        repos_json.append(dic)
-    return jsonify(repos_json)
+    total_pages = Repository.query.filter_by(status=status).count()
+    if status == 'published': # different way to bring the metadata
+        for x in repos_sub:
+            dic = x.as_dict()
+            try: 
+                response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+dic['name']+"/master/metadata.json")
+                metadata = json.loads(response.read().decode('utf-8'))
+                dic['metadata'] = metadata
+            except Exception as error:
+                print(str(error))    
+            try: 
+                url_shorten = dic['ori_url'].replace('https://github.com/', '')
+                response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+                properties = json.loads(response.read().decode('utf-8'))
+                dic['properties'] = properties
+            except Exception as error:
+                print(str(error))
+                return jsonify({'status':'Error requesting to github info'}), 500
+            print(dic)
+            repos_json.append(dic)
+
+    elif status == 'submitted': # different way to bring the metadata
+        for x in repos_sub:
+            dic = x.as_dict()
+            try: 
+                path_repo = conf.PATH_CLONE+dic['name']+'/metadata.json'
+                with open(path_repo) as json_file:
+                    metadata= json.load(json_file)                    
+                    dic['metadata'] = metadata
+            except Exception as error:
+                print(str(error))
+            try: 
+                url_shorten = dic['ori_url'].replace('https://github.com/', '')
+                response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+                properties = json.loads(response.read().decode('utf-8'))
+                dic['properties'] = properties
+            except Exception as error:
+                print(str(error))
+                return jsonify({'status':'Error requesting to github info'}), 500
+            print(dic)
+            repos_json.append(dic)
+    else: 
+        return jsonify({'status':'status not allowed'}), 500
+
+    return jsonify({'data':repos_json, 'status':'success', 'page':str(page), 'allPages': math.ceil(total_pages/per_page), 'allRecords': total_pages})
+
 
 
 def git_push(path_clone_git, commit_msg):
@@ -417,6 +464,8 @@ def publish():
     except Exception as error:
        print('Error gh pushing'+str(error))
        return jsonify({'status':'Error while gh pushing'}), 500
+    print(repo_name+" pushed")
+    
     #DB
     try:
         repo = Repository.query.filter_by(fork_url=fork_url).first()
@@ -425,6 +474,7 @@ def publish():
     except Exception as error:
        print('Error while changing status'+str(error))
        return jsonify({'status':'Error while changing status'}), 500
+    print(repo_name+" db published")
 
     #GH Reelease
     try:
@@ -434,5 +484,6 @@ def publish():
     except Exception as error:
        print('Error while gh releasing'+str(error))
        return jsonify({'status':'Error while gh releasing'}), 500
+    print(repo_name+" released")
 
     return jsonify({'status':'success'})
