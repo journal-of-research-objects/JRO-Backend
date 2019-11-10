@@ -6,3 +6,4 @@ GitPython==2.1.13
 PyGithub==1.43.8
 flask_jwt_extended==3.23.0
 virtualenv==16.7.5
+md2pdf==0.4

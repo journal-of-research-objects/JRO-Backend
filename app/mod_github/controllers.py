@@ -12,7 +12,8 @@ from git import Repo
 import json
 import math
 import threading
-from app.mod_github.toipynb import verify_files, create_ipynb, create_venv, install_libs, add_venv_gitignore
+from app.mod_github.toipynb import verify_files_nb, create_ipynb, create_venv, install_libs, add_venv_gitignore
+from app.mod_github.topdf import verify_files_pdf, create_pdf_file
 import errno, os, stat, shutil
 from github import Github
 from flask_jwt_extended import (
@@ -118,7 +119,7 @@ def submit():
     repo_name = data['repo_name']
     user_name = data['user_name']
     orcid = data['orcid']
-
+    paper_type = data['paper_type']
     authors = data['authors']
     keywords = data['keywords']
 
@@ -164,16 +165,20 @@ def submit():
         return jsonify({'status':'error changing name'}), 500
 
     try:
-        create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", orcid)
+        create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", paper_type, orcid)
     except Exception as error:
         delete_repo(fork_repo_url)
         print(str(error))
         return jsonify({'status':'error creating repo in db'}), 500
 
-    # creating thread
-    t_verify = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
+    if paper_type == 'notebook':
+        # creating thread
+        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+    else:
+        # creating thread
+        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
     # starting thread
-    t_verify.start()
+    thread.start()
 
     # verify asynchronous
     return jsonify(repo_data)
@@ -185,8 +190,8 @@ def delete_repo(url):
     repo = g.get_repo(url_shorten)
     repo.delete()
 
-def create_repo(name, ori_url, fork_url, status, owner):
-    repo = Repository(name=name, ori_url=ori_url, fork_url=fork_url, status=status, owner=owner)
+def create_repo(name, ori_url, fork_url, status, paper_type, owner):
+    repo = Repository(name=name, ori_url=ori_url, fork_url=fork_url, status=status, paper_type=paper_type, owner=owner)
     db.session.add(repo)
     db.session.commit()
 
@@ -208,6 +213,31 @@ def regenerate_nb():
     return jsonify({'status':'success'})
 
 def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
+    path_clone= conf.PATH_CLONE+repo_name+"/"
+    
+    clone(repo_url, repo_ssh, repo_name, authors, keywords)
+    
+    #create venv and kernel
+    venv(repo_url, repo_name)
+    print(repo_name+": venv created")
+
+    #add venv to gitignore
+    path_gitignore = os.path.join(path_clone, ".gitignore")
+    try:
+        add_venv_gitignore(path_gitignore)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:add_venv_gitignore:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:add_venv_gitignore")
+    print(repo_name+": venv gitignored")
+
+    #create nb
+    create_nb(repo_url, repo_name)
+
+
+def clone(repo_url, repo_ssh, repo_name, authors, keywords):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone
     try:
@@ -231,24 +261,13 @@ def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
         raise Exception("error:metadata:")
     print(repo_name+": metadata file created")
     
-    #create venv and kernel
-    venv(repo_url, repo_name)
-    print(repo_name+": venv created")
 
-    #add venv to gitignore
-    path_gitignore = os.path.join(path_clone, ".gitignore")
-    try:
-        add_venv_gitignore(path_gitignore)
-    except Exception as error:
-        repo = Repository.query.filter_by(fork_url=repo_url).first()
-        repo.status = "error:add_venv_gitignore:"+str(error)
-        db.session.commit()
-        print(str(error))
-        raise Exception("error:add_venv_gitignore")
-    print(repo_name+": venv gitignored")
-
-    #create nb
-    create_nb(repo_url, repo_name)
+def clone_create_pdf(repo_url, repo_ssh, repo_name, authors, keywords):
+    path_clone= conf.PATH_CLONE+repo_name+"/"
+    #clone and create metadata file
+    clone(repo_url, repo_ssh, repo_name, authors, keywords)
+    #create pdf
+    create_pdf(repo_url, repo_name)
 
 def create_metadata(authors, keywords, path_clone):
     try:
@@ -277,11 +296,43 @@ def venv(repo_url, repo_name):
 
 
 
+def create_pdf(repo_url, repo_name):
+    path_clone= conf.PATH_CLONE+repo_name+"/"
+    #verify_files to create ipynb
+    try:
+        if not verify_files_pdf(path_clone):
+            repo = Repository.query.filter_by(fork_url=repo_url).first()
+            repo.status = "error:verify not exist:"
+            db.session.commit()
+            raise Exception("error:verify not exist:")
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:verify:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:verify:")
+    print(repo_name+": files verified")
+    #create ipynb
+    try:
+        create_pdf_file(path_clone)
+    except Exception as error:
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "error:pdfcreation:"+str(error)
+        db.session.commit()
+        print(str(error))
+        raise Exception("error:pdfcreation:")
+    print(repo_name+": pdf created")
+    
+    repo = Repository.query.filter_by(fork_url=repo_url).first()
+    repo.status = "submitted"
+    db.session.commit()
+
+
 def create_nb(repo_url, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #verify_files to create ipynb
     try:
-        if not verify_files(path_clone):
+        if not verify_files_nb(path_clone):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
             repo.status = "error:verify not exist:"
             db.session.commit()
@@ -378,6 +429,7 @@ def deletesubmitted():
 @mod_github.route('/list/', methods=['GET'])
 def list_rep():
     status = request.args.get('status')
+    paper_type = request.args.get('paper_type')
     page = request.args.get('page')
     per_page = request.args.get('per_page')
 
@@ -393,9 +445,13 @@ def list_rep():
     else:
         per_page = int(per_page)
 
-    repos_sub = Repository.query.filter_by(status=status).paginate(page=page, per_page=per_page, max_per_page=100).items
-    repos_json = []
-    total_pages = Repository.query.filter_by(status=status).count()
+    if paper_type is None:
+        repos_sub = Repository.query.filter_by(status=status).paginate(page=page, per_page=per_page, max_per_page=100).items
+        total_pages = Repository.query.filter_by(status=status).count()
+    else:
+        repos_sub = Repository.query.filter_by(status=status, paper_type=paper_type).paginate(page=page, per_page=per_page, max_per_page=100).items
+        total_pages = Repository.query.filter_by(status=status, paper_type=paper_type).count()
+    repos_json = []  
     if status == 'published': # different way to bring the metadata
         for x in repos_sub:
             dic = x.as_dict()
