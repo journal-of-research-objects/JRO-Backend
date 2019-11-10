@@ -43,6 +43,11 @@ def signin():
     if 'orcid' in user_data:
         if not user_exists(user_data['orcid']):
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
+        else:
+            if is_editor(user_data['orcid']):
+                user_data['role'] = 'editor'
+                access_token = create_access_token(identity=user_data)
+                
     return jsonify(access_token=access_token, orcid=user_data['orcid'])
 
 
