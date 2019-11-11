@@ -17,11 +17,11 @@ def verify_files_nb(path):
 def create_venv(path, repo_name):
     venv_dir = os.path.join(path, "venv")
     virtualenv.create_environment(venv_dir)
-    # python_dir = os.path.join(venv_dir, "bin/python")
-    python_dir = os.path.join(venv_dir, "Scripts/python.exe") # windows
+    python_dir = os.path.join(venv_dir, "bin/python")
+    # python_dir = os.path.join(venv_dir, "Scripts/python.exe") # windows
     subprocess.check_call([python_dir, '-m', 'pip', 'install', 'ipykernel']) # install ipykernel
-    # subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--name', repo_name]) # install ipykernel
-    subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--user', '--name', repo_name]) # install ipykernel windows
+    subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--name', repo_name]) # install ipykernel
+    # subprocess.check_call([python_dir, '-m', 'ipykernel', 'install', '--user', '--name', repo_name]) # install ipykernel windows
 
 
 # add venv folder to gitignore
@@ -38,8 +38,8 @@ def add_venv_gitignore(path_gitignore):
 
 #Install libraries
 def install_libs(path):
-    # python_dir = os.path.join(path, "venv/bin/python")
-    python_dir = os.path.join(path, "venv/Scripts/python.exe") # windows
+    python_dir = os.path.join(path, "venv/bin/python")
+    # python_dir = os.path.join(path, "venv/Scripts/python.exe") # windows
     subprocess.check_call([python_dir, '-m', 'pip', 'install', '-r', path+REQUIREMENTS_PATH]) # install pkg
     # pip.main(['install', '-r', path+REQUIREMENTS_PATH, '--user'])
     # pip.main(['install', '-r', REQUIREMENTS_PATH])
