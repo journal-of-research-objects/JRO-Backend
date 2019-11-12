@@ -1,4 +1,5 @@
-# from md2pdf.core import md2pdf
+from md2pdf.core import md2pdf
+import os
 
 
 MD_PATH = "paper.md"

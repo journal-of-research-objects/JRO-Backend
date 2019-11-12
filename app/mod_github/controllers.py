@@ -441,7 +441,7 @@ def list_rep():
     else:
         page = int(page)
     if per_page is None:
-        per_page = 1
+        per_page = 10
     else:
         per_page = int(per_page)
 
@@ -514,7 +514,7 @@ def publish():
     #GH push
     path_clone= conf.PATH_CLONE+repo_name+"/"
     path_clone_git = path_clone+".git"
-    commit_msg="published version with notebook"
+    commit_msg="published version with publication"
     try:
         git_push(path_clone_git, commit_msg)
     except Exception as error:
