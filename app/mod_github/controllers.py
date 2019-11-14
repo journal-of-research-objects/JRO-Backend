@@ -173,10 +173,10 @@ def submit():
 
     if paper_type == 'notebook':
         # creating thread
-        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     else:
         # creating thread
-        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     # starting thread
     thread.start()
 
@@ -498,6 +498,34 @@ def list_rep():
     return jsonify({'data':repos_json, 'status':'success', 'page':str(page), 'allPages': math.ceil(total_pages/per_page), 'allRecords': total_pages})
 
 
+@mod_github.route('/get_repo/', methods=['GET'])
+def get_repo():
+    fork_url = request.args.get('fork_url')
+    try: 
+        repo = Repository.query.filter_by(fork_url=fork_url).first()
+    except Exception as error:
+            print(str(error))
+            return jsonify({'status':'Error. Repo not in db'}), 500
+    repo_dic = repo.as_dict()
+    if repo_dic['status'] != 'published':
+        return jsonify({'status':'Error. Repo not published'}), 500
+    else:
+        try: 
+            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_dic['name']+"/master/metadata.json")
+            metadata = json.loads(response.read().decode('utf-8'))
+            repo_dic['metadata'] = metadata
+        except Exception as error:
+            print(str(error))    
+        try: 
+            url_shorten = repo_dic['ori_url'].replace('https://github.com/', '')
+            response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+            properties = json.loads(response.read().decode('utf-8'))
+            repo_dic['properties'] = properties
+        except Exception as error:
+            print(str(error))
+            return jsonify({'status':'Error requesting to github info'}), 500
+        
+    return jsonify(repo_dic)
 
 def git_push(path_clone_git, commit_msg):
     repo = Repo(path_clone_git)
