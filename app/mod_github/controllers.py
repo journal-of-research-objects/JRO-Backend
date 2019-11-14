@@ -173,10 +173,10 @@ def submit():
 
     if paper_type == 'notebook':
         # creating thread
-        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     else:
         # creating thread
-        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     # starting thread
     thread.start()
 
