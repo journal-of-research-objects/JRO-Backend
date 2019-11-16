@@ -590,6 +590,6 @@ def publish():
     print(repo_name+" released")
 
     repo = Repository.query.filter_by(fork_url=fork_url).first()
-    repo.date_published = datetime.utcnow
+    repo.date_published = datetime.utcnow()
     db.session.commit()
     return jsonify({'status':'success'})
