@@ -12,6 +12,7 @@ from git import Repo
 import json
 import math
 import threading
+from datetime import datetime
 from app.mod_github.toipynb import verify_files_nb, create_ipynb, create_venv, install_libs, add_venv_gitignore
 from app.mod_github.topdf import verify_files_pdf, create_pdf_file
 import errno, os, stat, shutil
@@ -570,4 +571,7 @@ def publish():
        return jsonify({'status':'Error while gh releasing'}), 500
     print(repo_name+" released")
 
+    repo = Repository.query.filter_by(fork_url=fork_url).first()
+    repo.date_published = datetime.utcnow().isoformat()
+    db.session.commit()
     return jsonify({'status':'success'})
