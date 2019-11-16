@@ -319,17 +319,26 @@ def create_pdf(repo_url, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #verify_files to create pdf
     try:
-        if not verify_files_pdf(path_clone):
-            repo = Repository.query.filter_by(fork_url=repo_url).first()
-            repo.status = "error:verify not exist:"
-            db.session.commit()
-            raise Exception("error:verify not exist:")
+        flag_ver = verify_files_pdf(path_clone)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:verify:"+str(error)
         db.session.commit()
         print(str(error))
         raise Exception("error:verify:")
+    if not flag_ver:
+        try: 
+            repo = Repository.query.filter_by(fork_url=repo_url).first()
+            repo.status = "error:verify not exist:"
+            db.session.commit()
+        except Exception as error:
+            repo = Repository.query.filter_by(fork_url=repo_url).first()
+            repo.status = "error:verify:"+str(error)
+            db.session.commit()
+            print(str(error))
+            raise Exception("error:verify:")
+        raise Exception("error:verify not exist:")
+    
     print(repo_name+": files verified")
     #create pdf
     try:
@@ -351,18 +360,26 @@ def create_nb(repo_url, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #verify_files to create ipynb
     try:
-        if not verify_files_nb(path_clone):
-            repo = Repository.query.filter_by(fork_url=repo_url).first()
-            repo.status = "error:verify not exist:"
-            db.session.commit()
-            raise Exception("error:verify not exist:")
+        flag_ver = verify_files_nb(path_clone)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:verify:"+str(error)
         db.session.commit()
         print(str(error))
         raise Exception("error:verify:")
-
+    if not flag_ver:
+        try: 
+            repo = Repository.query.filter_by(fork_url=repo_url).first()
+            repo.status = "error:verify not exist:"
+            db.session.commit()
+        except Exception as error:
+            repo = Repository.query.filter_by(fork_url=repo_url).first()
+            repo.status = "error:verify:"+str(error)
+            db.session.commit()
+            print(str(error))
+            raise Exception("error:verify:")
+        raise Exception("error:verify not exist:")
+    
     print(repo_name+": files verified")
 
     #install libs
