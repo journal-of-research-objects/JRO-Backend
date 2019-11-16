@@ -29,6 +29,7 @@ class Repository(Base):
     status = db.Column(db.String(1000),  nullable=True)
     paper_type = db.Column(db.String(1000),  nullable=False)
     date_submitted = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow)
+    date_published = db.Column(db.DateTime,  nullable=True)
     owner = db.Column(db.String(128), db.ForeignKey('user.orcid'), nullable=False)
 
     def __init__(self, name, ori_url, fork_url, status, paper_type, owner):

@@ -12,6 +12,7 @@ from git import Repo
 import json
 import math
 import threading
+from datetime import datetime
 from app.mod_github.toipynb import verify_files_nb, create_ipynb, create_venv, install_libs, add_venv_gitignore
 from app.mod_github.topdf import verify_files_pdf, create_pdf_file
 import errno, os, stat, shutil
@@ -173,10 +174,10 @@ def submit():
 
     if paper_type == 'notebook':
         # creating thread
-        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     else:
         # creating thread
-        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_url,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
     # starting thread
     thread.start()
 
@@ -262,8 +263,26 @@ def clone(repo_url, repo_ssh, repo_name, authors, keywords):
     print(repo_name+": metadata file created")
     
 
+
+@mod_github.route('/regenerate_pdf/', methods=['GET'])
+@jwt_required
+def regenerate_pdf():
+    forked_url = request.args.get('forked_url')
+    repo_name = request.args.get('repo_name')
+
+    path_clone = conf.PATH_CLONE+repo_name+"/"
+    repo = Repo(path_clone)
+    o = repo.remotes.origin
+    o.pull()
+    try:
+        create_pdf(forked_url, repo_name)
+    except Exception as error:
+        print('Error while creating pdf'+str(error))
+        return jsonify({'status':'Error while creating pdf'}), 500
+    return jsonify({'status':'success'})
+
+
 def clone_create_pdf(repo_url, repo_ssh, repo_name, authors, keywords):
-    path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone and create metadata file
     clone(repo_url, repo_ssh, repo_name, authors, keywords)
     #create pdf
@@ -298,7 +317,7 @@ def venv(repo_url, repo_name):
 
 def create_pdf(repo_url, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
-    #verify_files to create ipynb
+    #verify_files to create pdf
     try:
         if not verify_files_pdf(path_clone):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
@@ -312,7 +331,7 @@ def create_pdf(repo_url, repo_name):
         print(str(error))
         raise Exception("error:verify:")
     print(repo_name+": files verified")
-    #create ipynb
+    #create pdf
     try:
         create_pdf_file(path_clone)
     except Exception as error:
@@ -498,6 +517,34 @@ def list_rep():
     return jsonify({'data':repos_json, 'status':'success', 'page':str(page), 'allPages': math.ceil(total_pages/per_page), 'allRecords': total_pages})
 
 
+@mod_github.route('/get_repo/', methods=['GET'])
+def get_repo():
+    fork_url = request.args.get('fork_url')
+    try: 
+        repo = Repository.query.filter_by(fork_url=fork_url).first()
+    except Exception as error:
+            print(str(error))
+            return jsonify({'status':'Error. Repo not in db'}), 500
+    repo_dic = repo.as_dict()
+    if repo_dic['status'] != 'published':
+        return jsonify({'status':'Error. Repo not published'}), 500
+    else:
+        try: 
+            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_dic['name']+"/master/metadata.json")
+            metadata = json.loads(response.read().decode('utf-8'))
+            repo_dic['metadata'] = metadata
+        except Exception as error:
+            print(str(error))    
+        try: 
+            url_shorten = repo_dic['ori_url'].replace('https://github.com/', '')
+            response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+            properties = json.loads(response.read().decode('utf-8'))
+            repo_dic['properties'] = properties
+        except Exception as error:
+            print(str(error))
+            return jsonify({'status':'Error requesting to github info'}), 500
+        
+    return jsonify(repo_dic)
 
 def git_push(path_clone_git, commit_msg):
     repo = Repo(path_clone_git)
@@ -542,4 +589,7 @@ def publish():
        return jsonify({'status':'Error while gh releasing'}), 500
     print(repo_name+" released")
 
+    repo = Repository.query.filter_by(fork_url=fork_url).first()
+    repo.date_published = datetime.utcnow()
+    db.session.commit()
     return jsonify({'status':'success'})

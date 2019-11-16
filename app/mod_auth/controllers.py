@@ -98,3 +98,11 @@ def create_user(orcid, name, aka, token):
     user = User(orcid=orcid, name=name, aka=aka, token=token)
     db.session.add(user)
     db.session.commit()
+
+
+@mod_auth.route('/get_user/', methods=['GET'])
+def get_user():
+    orcid = request.args.get('orcid')
+    user = User.query.filter_by(orcid=orcid).first()
+    user_dic = user.as_dict()
+    return jsonify(user_dic)
