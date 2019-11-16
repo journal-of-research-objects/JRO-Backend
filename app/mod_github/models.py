@@ -28,7 +28,7 @@ class Repository(Base):
     fork_url = db.Column(db.String(1000),  nullable=False, unique=True)
     status = db.Column(db.String(1000),  nullable=True)
     paper_type = db.Column(db.String(1000),  nullable=False)
-    date_submitted = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow().isoformat())
+    date_submitted = db.Column(db.DateTime,  nullable=False, default=datetime.utcnow)
     date_published = db.Column(db.DateTime,  nullable=True)
     owner = db.Column(db.String(128), db.ForeignKey('user.orcid'), nullable=False)
 

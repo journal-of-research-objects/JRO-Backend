@@ -263,8 +263,26 @@ def clone(repo_url, repo_ssh, repo_name, authors, keywords):
     print(repo_name+": metadata file created")
     
 
+
+@mod_github.route('/regenerate_pdf/', methods=['GET'])
+@jwt_required
+def regenerate_pdf():
+    forked_url = request.args.get('forked_url')
+    repo_name = request.args.get('repo_name')
+
+    path_clone = conf.PATH_CLONE+repo_name+"/"
+    repo = Repo(path_clone)
+    o = repo.remotes.origin
+    o.pull()
+    try:
+        create_pdf(forked_url, repo_name)
+    except Exception as error:
+        print('Error while creating pdf'+str(error))
+        return jsonify({'status':'Error while creating pdf'}), 500
+    return jsonify({'status':'success'})
+
+
 def clone_create_pdf(repo_url, repo_ssh, repo_name, authors, keywords):
-    path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone and create metadata file
     clone(repo_url, repo_ssh, repo_name, authors, keywords)
     #create pdf
@@ -299,7 +317,7 @@ def venv(repo_url, repo_name):
 
 def create_pdf(repo_url, repo_name):
     path_clone= conf.PATH_CLONE+repo_name+"/"
-    #verify_files to create ipynb
+    #verify_files to create pdf
     try:
         if not verify_files_pdf(path_clone):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
@@ -313,7 +331,7 @@ def create_pdf(repo_url, repo_name):
         print(str(error))
         raise Exception("error:verify:")
     print(repo_name+": files verified")
-    #create ipynb
+    #create pdf
     try:
         create_pdf_file(path_clone)
     except Exception as error:
@@ -572,6 +590,6 @@ def publish():
     print(repo_name+" released")
 
     repo = Repository.query.filter_by(fork_url=fork_url).first()
-    repo.date_published = datetime.utcnow().isoformat()
+    repo.date_published = datetime.utcnow
     db.session.commit()
     return jsonify({'status':'success'})
