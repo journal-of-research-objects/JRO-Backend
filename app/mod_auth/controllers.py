@@ -37,6 +37,14 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
+    # request employment information for affiliation
+    employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
+    dep = employments[0]['department-name']
+    org = employments[0]['organization']['name']
+    city = employments[0]['organization']['city']
+    region = employments[0]['organization']['region']
+    country = employments[0]['organization']['country']
+
     access_token = create_access_token(identity=user_data)
     print(access_token)
     print("---------DATA---------",user_data)
@@ -57,6 +65,17 @@ def signin():
 def profile():
     current_user = get_jwt_identity()
     return jsonify(current_user), 200
+
+
+# request for employment information for affiliation
+def get_orcid_empl(orcid, access_token):
+    hdr = { 'Accept' : 'application/json',
+            'Authorization': 'Bearer '+access_token }
+    results = requests.post(conf.ORCID_PUB_API_URL+orcid+"/employments",
+                headers=hdr)
+    return json.loads(results.text)['employment-summary']
+    
+
 
 
 @mod_auth.route('/logineditor/', methods=['GET', 'OPTIONS'])
