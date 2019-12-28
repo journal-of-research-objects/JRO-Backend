@@ -41,9 +41,11 @@ def signin():
     employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
     dep = employments[0]['department-name']
     org = employments[0]['organization']['name']
-    city = employments[0]['organization']['city']
-    region = employments[0]['organization']['region']
-    country = employments[0]['organization']['country']
+    city = employments[0]['organization']['address']['city']
+    region = employments[0]['organization']['address']['region']
+    country = employments[0]['organization']['address']['country']
+
+    print(dep, org, city, region, country)
 
     access_token = create_access_token(identity=user_data)
     print(access_token)
@@ -71,8 +73,9 @@ def profile():
 def get_orcid_empl(orcid, access_token):
     hdr = { 'Accept' : 'application/json',
             'Authorization': 'Bearer '+access_token }
-    results = requests.post(conf.ORCID_PUB_API_URL+orcid+"/employments",
+    results = requests.get(conf.ORCID_PUB_API_URL+orcid+"/employments",
                 headers=hdr)
+    print(results.text)
     return json.loads(results.text)['employment-summary']
     
 
