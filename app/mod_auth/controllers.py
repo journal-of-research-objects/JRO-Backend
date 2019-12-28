@@ -51,7 +51,7 @@ def signin():
         country = employments[0]['organization']['address']['country']
 
         print(dep, org, city, region, country)
-        
+
         if not user_exists(user_data['orcid']):
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
         else:
@@ -59,7 +59,9 @@ def signin():
                 user_data['role'] = 'editor'
                 access_token = create_access_token(identity=user_data)
                 
-    return jsonify(access_token=access_token, orcid=user_data['orcid'])
+        return jsonify(access_token=access_token, orcid=user_data['orcid'], status="success")
+    else: 
+        return jsonify(status="error in auth_code")
 
 
 
