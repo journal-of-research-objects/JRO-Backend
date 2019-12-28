@@ -37,20 +37,21 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
-    # request employment information for affiliation
-    employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
-    dep = employments[0]['department-name']
-    org = employments[0]['organization']['name']
-    city = employments[0]['organization']['address']['city']
-    region = employments[0]['organization']['address']['region']
-    country = employments[0]['organization']['address']['country']
-
-    print(dep, org, city, region, country)
 
     access_token = create_access_token(identity=user_data)
     print(access_token)
     print("---------DATA---------",user_data)
     if 'orcid' in user_data:
+        # request employment information for affiliation
+        employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
+        dep = employments[0]['department-name']
+        org = employments[0]['organization']['name']
+        city = employments[0]['organization']['address']['city']
+        region = employments[0]['organization']['address']['region']
+        country = employments[0]['organization']['address']['country']
+
+        print(dep, org, city, region, country)
+        
         if not user_exists(user_data['orcid']):
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
         else:
