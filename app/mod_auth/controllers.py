@@ -37,10 +37,21 @@ def signin():
               params=params,
               headers=hdr)
     user_data = json.loads(results.text)
+
     access_token = create_access_token(identity=user_data)
     print(access_token)
     print("---------DATA---------",user_data)
     if 'orcid' in user_data:
+        # request employment information for affiliation
+        employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
+        dep = employments[0]['department-name']
+        org = employments[0]['organization']['name']
+        city = employments[0]['organization']['address']['city']
+        region = employments[0]['organization']['address']['region']
+        country = employments[0]['organization']['address']['country']
+
+        print(dep, org, city, region, country)
+
         if not user_exists(user_data['orcid']):
             create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
         else:
@@ -48,7 +59,9 @@ def signin():
                 user_data['role'] = 'editor'
                 access_token = create_access_token(identity=user_data)
                 
-    return jsonify(access_token=access_token, orcid=user_data['orcid'])
+        return jsonify(access_token=access_token, orcid=user_data['orcid'], status="success")
+    else: 
+        return jsonify(status="error in auth_code")
 
 
 
@@ -57,6 +70,18 @@ def signin():
 def profile():
     current_user = get_jwt_identity()
     return jsonify(current_user), 200
+
+
+# request for employment information for affiliation
+def get_orcid_empl(orcid, access_token):
+    hdr = { 'Accept' : 'application/json',
+            'Authorization': 'Bearer '+access_token }
+    results = requests.get(conf.ORCID_PUB_API_URL+orcid+"/employments",
+                headers=hdr)
+    print(results.text)
+    return json.loads(results.text)['employment-summary']
+    
+
 
 
 @mod_auth.route('/logineditor/', methods=['GET', 'OPTIONS'])
