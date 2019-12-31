@@ -61,7 +61,8 @@ def signin():
                 
         return jsonify(access_token=access_token, orcid=user_data['orcid'], status="success")
     else: 
-        return jsonify(status="error in auth_code")
+        user_data["status"]="error"
+        return jsonify(user_data)
 
 
 
