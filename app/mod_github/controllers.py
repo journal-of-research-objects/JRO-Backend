@@ -6,6 +6,9 @@ from app.app import db
 from app.mod_github.models import Repository
 # from SPARQLWrapper import SPARQLWrapper, JSON
 import urllib
+import ssl
+# This restores the same behavior as before.
+context = ssl._create_unverified_context()
 import requests
 import re
 from git import Repo
@@ -44,7 +47,7 @@ def github_auth():
     data = data.encode('ascii') # data should be bytes
     req = urllib.request.Request(conf.GITHUB_API_URL, data)
     req.add_header('Accept', 'application/json')
-    response = urllib.request.urlopen(req)
+    response = urllib.request.urlopen(req, context=context)
     user_data = json.loads(response.read().decode('utf-8'))
     print(user_data)
     # repositories = get_repositories(user_data['access_token'], orcid)
@@ -58,7 +61,7 @@ def github_auth():
 def get_repositories():
     access_token = request.args.get('access_token')
     req = urllib.request.Request(conf.GITHUB_REPOS_API_URL+'user' + '?access_token=' + access_token)
-    response = urllib.request.urlopen(req)
+    response = urllib.request.urlopen(req, context=context)
     user_data = json.loads(response.read().decode('utf-8'))
 
     params = {'page': 1, 'per_page':100}
@@ -81,7 +84,7 @@ def get_repositories():
         repo['status'] = repo_stat(repo['html_url'])
         repo['forked_url'] = repo_fork_url(repo['html_url'])
         if repo['status'] == "published":
-            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo['owner']['login']+"-"+repo['name']+"/master/metadata.json")
+            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo['owner']['login']+"-"+repo['name']+"/master/metadata.json", context=context)
             metadata = json.loads(response.read().decode('utf-8'))
             repo['metadata'] = metadata
     return jsonify(repos_data)
@@ -492,14 +495,14 @@ def list_rep():
         for x in repos_sub:
             dic = x.as_dict()
             try: 
-                response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+dic['name']+"/master/metadata.json")
+                response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+dic['name']+"/master/metadata.json", context=context)
                 metadata = json.loads(response.read().decode('utf-8'))
                 dic['metadata'] = metadata
             except Exception as error:
                 print(str(error))    
             try: 
                 url_shorten = dic['ori_url'].replace('https://github.com/', '')
-                response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+                response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten, context=context)
                 properties = json.loads(response.read().decode('utf-8'))
                 dic['properties'] = properties
             except Exception as error:
@@ -520,7 +523,7 @@ def list_rep():
                 print(str(error))
             try: 
                 url_shorten = dic['ori_url'].replace('https://github.com/', '')
-                response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+                response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten, context=context)
                 properties = json.loads(response.read().decode('utf-8'))
                 dic['properties'] = properties
             except Exception as error:
@@ -547,14 +550,14 @@ def get_repo():
         return jsonify({'status':'Error. Repo not published'}), 500
     else:
         try: 
-            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_dic['name']+"/master/metadata.json")
+            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo_dic['name']+"/master/metadata.json", context=context)
             metadata = json.loads(response.read().decode('utf-8'))
             repo_dic['metadata'] = metadata
         except Exception as error:
             print(str(error))    
         try: 
             url_shorten = repo_dic['ori_url'].replace('https://github.com/', '')
-            response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten)
+            response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten, context=context)
             properties = json.loads(response.read().decode('utf-8'))
             repo_dic['properties'] = properties
         except Exception as error:
