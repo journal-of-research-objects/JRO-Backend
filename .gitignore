@@ -94,3 +94,6 @@ ENV/
 
 flask_session/
 docs/app.db
+
+*.ini
+*.sock
