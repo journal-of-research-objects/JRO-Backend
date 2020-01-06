@@ -97,3 +97,4 @@ docs/app.db
 
 *.ini
 *.sock
+*.log
