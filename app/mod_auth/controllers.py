@@ -12,6 +12,8 @@ from flask_jwt_extended import (
     create_access_token,
     get_jwt_identity,
 )
+import logging
+logger = logging.getLogger("app.access")
 
 # Import module models (i.e. User)
 from app.mod_auth.models import User
@@ -33,36 +35,40 @@ def signin():
     hdr = { 'Content-Type' : 'application/x-www-form-urlencoded' }
     # data = urllib.parse.urlencode(params).encode()
     # req = urllib.request.Request(conf.ORCID_API_URL+"token", data=data, headers=hdr)
-    results = requests.post(conf.ORCID_API_URL+"token",
-              params=params,
-              headers=hdr)
-    user_data = json.loads(results.text)
+    try: 
+        results = requests.post(conf.ORCID_API_URL+"token",
+                params=params,
+                headers=hdr)
+        user_data = json.loads(results.text)
 
-    access_token = create_access_token(identity=user_data)
-    print(access_token)
-    print("---------DATA---------",user_data)
-    if 'orcid' in user_data:
-        # request employment information for affiliation
-        employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
-        dep = employments[0]['department-name']
-        org = employments[0]['organization']['name']
-        city = employments[0]['organization']['address']['city']
-        region = employments[0]['organization']['address']['region']
-        country = employments[0]['organization']['address']['country']
+        access_token = create_access_token(identity=user_data)
+        logger.info(access_token)
+        logger.info("---------DATA---------"+str(user_data))
+        if 'orcid' in user_data:
+            # request employment information for affiliation
+            employments = get_orcid_empl(user_data['orcid'], user_data['access_token'])
+            dep = employments[0]['department-name']
+            org = employments[0]['organization']['name']
+            city = employments[0]['organization']['address']['city']
+            region = employments[0]['organization']['address']['region']
+            country = employments[0]['organization']['address']['country']
 
-        print(dep, org, city, region, country)
+            logger.info(dep+", " +org+", " +city+", " +region+", " +country)
 
-        if not user_exists(user_data['orcid']):
-            create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
-        else:
-            if is_editor(user_data['orcid']):
-                user_data['role'] = 'editor'
-                access_token = create_access_token(identity=user_data)
-                
-        return jsonify(access_token=access_token, orcid=user_data['orcid'], status="success")
-    else: 
-        user_data["status"]="error"
-        return jsonify(user_data)
+            if not user_exists(user_data['orcid']):
+                create_user(user_data['orcid'], user_data['name'], None, user_data['access_token'])
+            else:
+                if is_editor(user_data['orcid']):
+                    user_data['role'] = 'editor'
+                    access_token = create_access_token(identity=user_data)
+                    
+            return jsonify(access_token=access_token, orcid=user_data['orcid'], status="success")
+        else: 
+            user_data["status"]="error"
+            return jsonify(user_data)
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error")
 
 
 
@@ -79,7 +85,7 @@ def get_orcid_empl(orcid, access_token):
             'Authorization': 'Bearer '+access_token }
     results = requests.get(conf.ORCID_PUB_API_URL+orcid+"/employments",
                 headers=hdr)
-    print(results.text)
+    logger.info(results.text)
     return json.loads(results.text)['employment-summary']
     
 
@@ -102,8 +108,8 @@ def signin_editor():
               headers=hdr)
     user_data = json.loads(results.text)
     access_token = create_access_token(identity=user_data)
-    print(access_token)
-    print("---------DATA---------",user_data)
+    logger.info(access_token)
+    logger.info("---------DATA---------"+str(user_data))
     if 'orcid' in user_data and user_exists(user_data['orcid']) and is_editor(user_data['orcid']):
         return jsonify(access_token=access_token)
     else:
@@ -116,7 +122,7 @@ def is_editor(orcid):
 
 def user_exists(orcid):
     user = User.query.filter_by(orcid=orcid).first()
-    print (user)
+    logger.info (str(user))
     return True if user else False
 
 

@@ -50,12 +50,12 @@ db.create_all()
 # file_path = os.path.join(app.root_path, conf.TMP_DIR)
 # if not os.path.exists(file_path):
 #     os.makedirs(file_path)
-
+import logging
 def main():
     """Main entry point of the app."""
     try:
-
-        app.run(host='0.0.0.0', debug=True, port=8008, use_reloader=True,threaded=True)
+        logging.basicConfig(filename='error.log',level=logging.DEBUG)
+        app.run(host='0.0.0.0', debug=True, port=8002, use_reloader=True,threaded=True)
     except Exception as exc:
         print(exc.message)
     finally:

@@ -29,6 +29,8 @@ from flask_jwt_extended import (
 # or using an access token
 g = Github(conf.GITHUB_TOKEN)
 
+import logging
+logger = logging.getLogger("app.access")
 
 mod_github = Blueprint('github', __name__)
 CORS(mod_github)
@@ -45,13 +47,17 @@ def github_auth():
               }
     data = urllib.parse.urlencode(params)
     data = data.encode('ascii') # data should be bytes
-    req = urllib.request.Request(conf.GITHUB_API_URL, data)
-    req.add_header('Accept', 'application/json')
-    response = urllib.request.urlopen(req, context=context)
-    user_data = json.loads(response.read().decode('utf-8'))
-    print(user_data)
-    # repositories = get_repositories(user_data['access_token'], orcid)
-    return jsonify(user_data)
+    try: 
+        req = urllib.request.Request(conf.GITHUB_API_URL, data)
+        req.add_header('Accept', 'application/json')
+        response = urllib.request.urlopen(req, context=context)
+        user_data = json.loads(response.read().decode('utf-8'))
+        logger.info(str(user_data))
+        # repositories = get_repositories(user_data['access_token'], orcid)
+        return jsonify(user_data)
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 
 
@@ -60,66 +66,82 @@ def github_auth():
 @jwt_required
 def get_repositories():
     access_token = request.args.get('access_token')
-    req = urllib.request.Request(conf.GITHUB_REPOS_API_URL+'user' + '?access_token=' + access_token)
-    response = urllib.request.urlopen(req, context=context)
-    user_data = json.loads(response.read().decode('utf-8'))
+    try:
+        req = urllib.request.Request(conf.GITHUB_REPOS_API_URL+'user' + '?access_token=' + access_token)
+        response = urllib.request.urlopen(req, context=context)
+        user_data = json.loads(response.read().decode('utf-8'))
 
-    params = {'page': 1, 'per_page':100}
-    another_page = True
-    repos_url = user_data['repos_url']
-    repos_data = []
-    hdr = {
-            'Accept': 'application/json'
-            }
-    while another_page: #the list of repos is paginated
-        r = requests.get(repos_url, params=params, headers=hdr)
-        json_response = json.loads(r.text)
-        repos_data+= json_response
-        if 'next' in r.links: #check if there is another page of repos
-            params['page'] = params['page']+1
-        else:
-            another_page=False
-    
-    for repo in repos_data:
-        repo['status'] = repo_stat(repo['html_url'])
-        repo['forked_url'] = repo_fork_url(repo['html_url'])
-        if repo['status'] == "published":
-            response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo['owner']['login']+"-"+repo['name']+"/master/metadata.json", context=context)
-            metadata = json.loads(response.read().decode('utf-8'))
-            repo['metadata'] = metadata
-    return jsonify(repos_data)
+        params = {'page': 1, 'per_page':100}
+        another_page = True
+        repos_url = user_data['repos_url']
+        repos_data = []
+        hdr = {
+                'Accept': 'application/json'
+                }
+        while another_page: #the list of repos is paginated
+            r = requests.get(repos_url, params=params, headers=hdr)
+            json_response = json.loads(r.text)
+            repos_data+= json_response
+            if 'next' in r.links: #check if there is another page of repos
+                params['page'] = params['page']+1
+            else:
+                another_page=False
+        
+        for repo in repos_data:
+            repo['status'] = repo_stat(repo['html_url'])
+            repo['forked_url'] = repo_fork_url(repo['html_url'])
+            if repo['status'] == "published":
+                response = urllib.request.urlopen(conf.GITHUB_RAW_URL+conf.GITHUB_ORGANIZATION_NAME+"/"+repo['owner']['login']+"-"+repo['name']+"/master/metadata.json", context=context)
+                metadata = json.loads(response.read().decode('utf-8'))
+                repo['metadata'] = metadata
+        return jsonify(repos_data)
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 
 def repo_stat(repo_url):
-    status = "initial"
-    repo = Repository.query.filter_by(ori_url=repo_url).first()
-    if repo:
-        status = repo.status
-        if ("error" in status):
-            colon = [m.start() for m in re.finditer(r":",status)][1] # 2nd colon
-            status = status[:colon]
-    return status
+    try: 
+        status = "initial"
+        repo = Repository.query.filter_by(ori_url=repo_url).first()
+        if repo:
+            status = repo.status
+            if ("error" in status):
+                colon = [m.start() for m in re.finditer(r":",status)][1] # 2nd colon
+                status = status[:colon]
+        return status
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 def repo_fork_url(repo_url):
-    fork_url = ''
-    repo = Repository.query.filter_by(ori_url=repo_url).first()
-    if repo:
-        fork_url = repo.fork_url
-    return fork_url
+    try:
+        fork_url = ''
+        repo = Repository.query.filter_by(ori_url=repo_url).first()
+        if repo:
+            fork_url = repo.fork_url
+        return fork_url
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 @mod_github.route('/get_status_repo/', methods=['GET'])
 @jwt_required
 def get_status_repo():
-    repo_url = request.args.get('repo_url')
-    status = repo_stat(repo_url)
-    return jsonify(status=status)
+    try: 
+        repo_url = request.args.get('repo_url')
+        status = repo_stat(repo_url)
+        return jsonify(status=status)
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 
 @mod_github.route('/submit/', methods=['POST'])
 @jwt_required
 def submit():
     data = request.get_json()
-    print(data)
+    logger.info(str(data))
     repo_name = data['repo_name']
     user_name = data['user_name']
     orcid = data['orcid']
@@ -139,7 +161,7 @@ def submit():
                             headers=hdr,
                             params=params)
     except Exception as error:
-        print(str(error))
+        logger.error(str(error))
         return jsonify({'status':'error forking'}), 500
 
     #CHANGE NAME
@@ -161,18 +183,18 @@ def submit():
                             headers=hdr)
         repo_data = json.loads(results.text)
 
-        print("---------------repo_data------------------")
-        print(repo_data)
+        logger.info("---------------repo_data------------------")
+        logger.info(str(repo_data))
     except Exception as error:
         delete_repo(fork_repo_url)
-        print(str(error))
+        logger.error(str(error))
         return jsonify({'status':'error changing name'}), 500
 
     try:
         create_repo(fork_repo_name, repo_url, fork_repo_url, "forked", paper_type, orcid)
     except Exception as error:
         delete_repo(fork_repo_url)
-        print(str(error))
+        logger.error(str(error))
         return jsonify({'status':'error creating repo in db'}), 500
 
     if paper_type == 'notebook':
@@ -190,14 +212,22 @@ def submit():
 
 
 def delete_repo(url):
-    url_shorten = url.replace('https://github.com/', '')
-    repo = g.get_repo(url_shorten)
-    repo.delete()
+    try:
+        url_shorten = url.replace('https://github.com/', '')
+        repo = g.get_repo(url_shorten)
+        repo.delete()
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 def create_repo(name, ori_url, fork_url, status, paper_type, owner):
-    repo = Repository(name=name, ori_url=ori_url, fork_url=fork_url, status=status, paper_type=paper_type, owner=owner)
-    db.session.add(repo)
-    db.session.commit()
+    try:
+        repo = Repository(name=name, ori_url=ori_url, fork_url=fork_url, status=status, paper_type=paper_type, owner=owner)
+        db.session.add(repo)
+        db.session.commit()
+    except Exception as error:
+        logger.error(str(error))
+        return jsonify(status="error"), 500
 
 @mod_github.route('/regenerate_nb/', methods=['GET'])
 @jwt_required
@@ -212,7 +242,7 @@ def regenerate_nb():
     try:
         create_nb(forked_url, repo_name)
     except Exception as error:
-        print('Error while creating nb'+str(error))
+        logger.error('Error while creating nb'+str(error))
         return jsonify({'status':'Error while creating nb'}), 500
     return jsonify({'status':'success'})
 
@@ -223,7 +253,7 @@ def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
     
     #create venv and kernel
     venv(repo_url, repo_name)
-    print(repo_name+": venv created")
+    logger.info(repo_name+": venv created")
 
     #add venv to gitignore
     path_gitignore = os.path.join(path_clone, ".gitignore")
@@ -233,9 +263,10 @@ def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:add_venv_gitignore:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:add_venv_gitignore")
-    print(repo_name+": venv gitignored")
+        logger.error(str(error))
+        logger.error("error:add_venv_gitignore")
+        raise Exception ("error:add_venv_gitignore")
+    logger.info(repo_name+": venv gitignored")
 
     #create nb
     create_nb(repo_url, repo_name)
@@ -250,9 +281,10 @@ def clone(repo_url, repo_ssh, repo_name, authors, keywords):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:clone:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:clone:")
-    print(repo_name+": cloned")
+        logger.error(str(error))
+        logger.error("error:clone:")
+        raise Exception ("error:clone:")
+    logger.info(repo_name+": cloned")
 
     #create metadata file
     try:
@@ -261,9 +293,10 @@ def clone(repo_url, repo_ssh, repo_name, authors, keywords):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:metadata:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:metadata:")
-    print(repo_name+": metadata file created")
+        logger.error(str(error))
+        logger.error("error:metadata:")
+        raise Exception ("error:metadata:")
+    logger.info(repo_name+": metadata file created")
     
 
 
@@ -280,7 +313,7 @@ def regenerate_pdf():
     try:
         create_pdf(forked_url, repo_name)
     except Exception as error:
-        print('Error while creating pdf'+str(error))
+        logger.error('Error while creating pdf'+str(error))
         return jsonify({'status':'Error while creating pdf'}), 500
     return jsonify({'status':'success'})
 
@@ -301,6 +334,7 @@ def create_metadata(authors, keywords, path_clone):
         with open(path_clone+'metadata.json', 'w') as outfile:
             json.dump(metadata, outfile)
     except Exception as error:
+        logger.error(str(error))
         raise Exception(str(error))
 
 
@@ -313,8 +347,9 @@ def venv(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:venvcreation:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:venvcreation:")
+        logger.error(str(error))
+        logger.error("error:venvcreation:")
+        raise Exception ("error:venvcreation:")
 
 
 
@@ -327,8 +362,9 @@ def create_pdf(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:verify:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:verify:")
+        logger.error(str(error))
+        logger.error("error:verify:")
+        raise Exception ("error:verify:")
     if not flag_ver:
         try: 
             repo = Repository.query.filter_by(fork_url=repo_url).first()
@@ -338,11 +374,13 @@ def create_pdf(repo_url, repo_name):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
             repo.status = "error:verify:"+str(error)
             db.session.commit()
-            print(str(error))
-            raise Exception("error:verify:")
-        raise Exception("error:verify not exist:")
+            logger.error(str(error))
+            logger.error("error:verify:")
+            raise Exception ("error:verify:")
+        logger.error("error:verify not exist:")
+        raise Exception ("error:verify not exist:")
     
-    print(repo_name+": files verified")
+    logger.info(repo_name+": files verified")
     #create pdf
     try:
         create_pdf_file(path_clone)
@@ -350,9 +388,10 @@ def create_pdf(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:pdfcreation:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:pdfcreation:")
-    print(repo_name+": pdf created")
+        logger.error(str(error))
+        logger.error("error:pdfcreation:")
+        raise Exception ("error:pdfcreation:")
+    logger.info(repo_name+": pdf created")
     
     repo = Repository.query.filter_by(fork_url=repo_url).first()
     repo.status = "submitted"
@@ -368,8 +407,9 @@ def create_nb(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:verify:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:verify:")
+        logger.error(str(error))
+        logger.error("error:verify:")
+        raise Exception ("error:verify:")
     if not flag_ver:
         try: 
             repo = Repository.query.filter_by(fork_url=repo_url).first()
@@ -379,11 +419,13 @@ def create_nb(repo_url, repo_name):
             repo = Repository.query.filter_by(fork_url=repo_url).first()
             repo.status = "error:verify:"+str(error)
             db.session.commit()
-            print(str(error))
-            raise Exception("error:verify:")
-        raise Exception("error:verify not exist:")
+            logger.error(str(error))
+            logger.error("error:verify:")
+            raise Exception ("error:verify:")
+        logger.error("error:verify not exist:")
+        raise Exception ("error:verify not exist:")
     
-    print(repo_name+": files verified")
+    logger.info(repo_name+": files verified")
 
     #install libs
     try:
@@ -392,10 +434,11 @@ def create_nb(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:libs:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:libs:")
+        logger.error(str(error))
+        logger.error("error:libs:")
+        raise Exception ("error:libs:")
 
-    print(repo_name+": libs installed")
+    logger.info(repo_name+": libs installed")
 
     #create ipynb
     try:
@@ -404,10 +447,11 @@ def create_nb(repo_url, repo_name):
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:nbcreation:"+str(error)
         db.session.commit()
-        print(str(error))
-        raise Exception("error:nbcreation:")
+        logger.error(str(error))
+        logger.error("error:nbcreation:")
+        raise Exception ("error:nbcreation:")
 
-    print(repo_name+": ipynb created")
+    logger.info(repo_name+": ipynb created")
     #
     # #GH push
     # path_clone_git = path_clone+".git"
@@ -421,10 +465,14 @@ def create_nb(repo_url, repo_name):
     #     print(str(error))
     #     raise Exception('Error while gh pushing')
     # print(repo_name+": pushed")
+    try: 
+        repo = Repository.query.filter_by(fork_url=repo_url).first()
+        repo.status = "submitted"
+        db.session.commit()
+    except Exception as error:
+        logger.error(str(error))
+        raise Exception(str(error))
 
-    repo = Repository.query.filter_by(fork_url=repo_url).first()
-    repo.status = "submitted"
-    db.session.commit()
 
 
 def on_rm_error( func, path, exc_info):
@@ -443,14 +491,14 @@ def deletesubmitted():
         db.session.delete(repo)
         db.session.commit()
     except Exception as error:
-        print('Error while deleting db record'+str(error))
+        logger.error('Error while deleting db record'+str(error))
         return jsonify({'status':'Error while deleting db record'}), 500
 
     #delete from github
     try:
         delete_repo(forked_url)
     except Exception as error:
-       print('Error while deleting gh repo'+str(error))
+       logger.error('Error while deleting gh repo'+str(error))
        return jsonify({'status':'Error while deleting gh repo'}), 500
 
     repo_name= forked_url.split("/")[-1]
@@ -459,7 +507,7 @@ def deletesubmitted():
     try:
        shutil.rmtree(path_clone,  onerror = on_rm_error)
     except Exception as error:
-       print('Error while deleting directory'+str(error))
+       logger.error('Error while deleting directory'+str(error))
        return jsonify({'status':'Error while deleting directory'}), 500
 
     return jsonify({'status':'success'})
@@ -499,16 +547,16 @@ def list_rep():
                 metadata = json.loads(response.read().decode('utf-8'))
                 dic['metadata'] = metadata
             except Exception as error:
-                print(str(error))    
+                logger.error(str(error))    
             try: 
                 url_shorten = dic['ori_url'].replace('https://github.com/', '')
                 response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten, context=context)
                 properties = json.loads(response.read().decode('utf-8'))
                 dic['properties'] = properties
             except Exception as error:
-                print(str(error))
+                logger.error(str(error))
                 return jsonify({'status':'Error requesting to github info'}), 500
-            print(dic)
+            logger.info(str(dic))
             repos_json.append(dic)
 
     elif status == 'submitted': # different way to bring the metadata
@@ -520,16 +568,16 @@ def list_rep():
                     metadata= json.load(json_file)                    
                     dic['metadata'] = metadata
             except Exception as error:
-                print(str(error))
+                logger.error(str(error))
             try: 
                 url_shorten = dic['ori_url'].replace('https://github.com/', '')
                 response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten, context=context)
                 properties = json.loads(response.read().decode('utf-8'))
                 dic['properties'] = properties
             except Exception as error:
-                print(str(error))
+                logger.error(str(error))
                 return jsonify({'status':'Error requesting to github info'}), 500
-            print(dic)
+            logger.info(str(dic))
             repos_json.append(dic)
     else: 
         return jsonify({'status':'status not allowed'}), 500
@@ -543,7 +591,7 @@ def get_repo():
     try: 
         repo = Repository.query.filter_by(fork_url=fork_url).first()
     except Exception as error:
-            print(str(error))
+            logger.error(str(error))
             return jsonify({'status':'Error. Repo not in db'}), 500
     repo_dic = repo.as_dict()
     if repo_dic['status'] != 'published':
@@ -554,14 +602,14 @@ def get_repo():
             metadata = json.loads(response.read().decode('utf-8'))
             repo_dic['metadata'] = metadata
         except Exception as error:
-            print(str(error))    
+            logger.error(str(error))    
         try: 
             url_shorten = repo_dic['ori_url'].replace('https://github.com/', '')
             response = urllib.request.urlopen(conf.GITHUB_REPOS_API_URL+'repos/'+url_shorten, context=context)
             properties = json.loads(response.read().decode('utf-8'))
             repo_dic['properties'] = properties
         except Exception as error:
-            print(str(error))
+            logger.error(str(error))
             return jsonify({'status':'Error requesting to github info'}), 500
         
     return jsonify(repo_dic)
@@ -585,9 +633,9 @@ def publish():
     try:
         git_push(path_clone_git, commit_msg)
     except Exception as error:
-       print('Error gh pushing'+str(error))
+       logger.error('Error gh pushing'+str(error))
        return jsonify({'status':'Error while gh pushing'}), 500
-    print(repo_name+" pushed")
+    logger.info(repo_name+" pushed")
     
     #DB
     try:
@@ -595,9 +643,9 @@ def publish():
         repo.status = "published"
         db.session.commit()
     except Exception as error:
-       print('Error while changing status'+str(error))
+       logger.error('Error while changing status'+str(error))
        return jsonify({'status':'Error while changing status'}), 500
-    print(repo_name+" db published")
+    logger.info(repo_name+" db published")
 
     #GH Reelease
     try:
@@ -605,9 +653,9 @@ def publish():
         repo = g.get_repo(url_shorten)
         repo.create_git_release("v1.0", "v1.0", "v1.0")
     except Exception as error:
-       print('Error while gh releasing'+str(error))
+       logger.error('Error while gh releasing'+str(error))
        return jsonify({'status':'Error while gh releasing'}), 500
-    print(repo_name+" released")
+    logger.info(repo_name+" released")
 
     repo = Repository.query.filter_by(fork_url=fork_url).first()
     repo.date_published = datetime.utcnow()
