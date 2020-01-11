@@ -8,3 +8,5 @@ flask_jwt_extended==3.23.0
 virtualenv==16.7.5
 md2pdf==0.4
 nbformat==4.4.0
+ipykernel==5.1.3
+
