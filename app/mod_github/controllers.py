@@ -383,7 +383,7 @@ def create_pdf(repo_url, repo_name):
     logger.info(repo_name+": files verified")
     #create pdf
     try:
-        create_pdf_file(path_clone)
+        create_pdf_file(path_clone, repo_url)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:pdfcreation:"+str(error)
