@@ -55,7 +55,7 @@ def main():
     """Main entry point of the app."""
     try:
         logging.basicConfig(filename='error.log',level=logging.DEBUG)
-        app.run(host='0.0.0.0', debug=True, port=8002, use_reloader=True,threaded=True)
+        app.run(host='0.0.0.0', debug=True, port=8008, use_reloader=True,threaded=True)
     except Exception as exc:
         print(exc.message)
     finally:
