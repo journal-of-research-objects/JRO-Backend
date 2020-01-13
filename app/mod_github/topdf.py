@@ -5,6 +5,9 @@ import time
 import json
 from docs import conf
 
+import logging
+logger = logging.getLogger("app.access")
+
 MD_PATH = "paper.md"
 REF_PATH = "paper.bib"
 PDF_PATH = "paper.pdf"
@@ -25,7 +28,7 @@ def create_pdf_file(path, repo_url):
         'Content-Type':'application/json'
     }
     resp_id = requests.post(url, params = payload, headers=hdr) # compile paper
-    print(resp_id.text)
+    logger.info(resp_id.text)
     job_id = json.loads(resp_id.text)['job_id']
     
     time.sleep(6) 
