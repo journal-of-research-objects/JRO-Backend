@@ -16,10 +16,10 @@ PDF_PATH = "paper.pdf"
 def verify_files_pdf(path):
     return os.path.exists(path+MD_PATH) and os.path.exists(path+REF_PATH)
 
-def create_pdf_file(path, repo_url):
+def create_pdf_file(path, repo_url, branch):
     url = conf.WHEDON_URL
     payload = {'repository': repo_url,
-    'branch': 'master',
+    'branch': branch,
     'journal': 'biohackrxiv',
     'commit': 'Compile paper',
     'retid': 'true'

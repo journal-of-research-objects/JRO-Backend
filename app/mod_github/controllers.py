@@ -142,12 +142,32 @@ def get_status_repo():
 def submit():
     data = request.get_json()
     logger.info(str(data))
+    if not ("repo_name" in data and "user_name" in data and "orcid" in data):
+        return jsonify(status="error:not elements required in data"), 500
+    
+    if not "paper_type" in data or data['paper_type'] is None:
+        paper_type = 'opensoft'
+    else:
+        paper_type = data['paper_type']
+    
+    if not "authors" in data:
+        authors = ''
+    else:
+        authors = data['authors']
+
+    if not "keywords" in data or data['keywords'] is None:
+        keywords = ''
+    else:
+        keywords = data['keywords']
+
+    if not "branch" in data or data['branch'] is None:
+        branch = 'master'
+    else:
+        branch = data['branch']
+
     repo_name = data['repo_name']
     user_name = data['user_name']
     orcid = data['orcid']
-    paper_type = data['paper_type']
-    authors = data['authors']
-    keywords = data['keywords']
 
     #FORK
     try:
@@ -199,10 +219,10 @@ def submit():
 
     if paper_type == 'notebook':
         # creating thread
-        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_nb, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,branch,))
     else:
         # creating thread
-        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,))
+        thread = threading.Thread(target=clone_create_pdf, args=(fork_repo_url, fork_repo_ssh,fork_repo_name, authors, keywords,branch,))
     # starting thread
     thread.start()
 
@@ -246,10 +266,10 @@ def regenerate_nb():
         return jsonify({'status':'Error while creating nb'}), 500
     return jsonify({'status':'success'})
 
-def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
+def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords, branch):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     
-    clone(repo_url, repo_ssh, repo_name, authors, keywords)
+    clone(repo_url, repo_ssh, repo_name, authors, keywords, branch)
     
     #create venv and kernel
     venv(repo_url, repo_name)
@@ -272,11 +292,11 @@ def clone_create_nb(repo_url, repo_ssh, repo_name, authors, keywords):
     create_nb(repo_url, repo_name)
 
 
-def clone(repo_url, repo_ssh, repo_name, authors, keywords):
+def clone(repo_url, repo_ssh, repo_name, authors, keywords, branch):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #clone
     try:
-        Repo.clone_from(repo_ssh, path_clone)
+        git_repo = Repo.clone_from(repo_ssh, path_clone, branch=branch)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:clone:"+str(error)
@@ -310,19 +330,20 @@ def regenerate_pdf():
     repo = Repo(path_clone)
     o = repo.remotes.origin
     o.pull()
+    branch = repo.active_branch.name
     try:
-        create_pdf(forked_url, repo_name)
+        create_pdf(forked_url, repo_name, branch)
     except Exception as error:
         logger.error('Error while creating pdf'+str(error))
         return jsonify({'status':'Error while creating pdf'}), 500
     return jsonify({'status':'success'})
 
 
-def clone_create_pdf(repo_url, repo_ssh, repo_name, authors, keywords):
+def clone_create_pdf(repo_url, repo_ssh, repo_name, authors, keywords, branch):
     #clone and create metadata file
-    clone(repo_url, repo_ssh, repo_name, authors, keywords)
+    clone(repo_url, repo_ssh, repo_name, authors, keywords, branch)
     #create pdf
-    create_pdf(repo_url, repo_name)
+    create_pdf(repo_url, repo_name, branch)
 
 def create_metadata(authors, keywords, path_clone):
     try:
@@ -353,7 +374,7 @@ def venv(repo_url, repo_name):
 
 
 
-def create_pdf(repo_url, repo_name):
+def create_pdf(repo_url, repo_name, branch):
     path_clone= conf.PATH_CLONE+repo_name+"/"
     #verify_files to create pdf
     try:
@@ -383,7 +404,7 @@ def create_pdf(repo_url, repo_name):
     logger.info(repo_name+": files verified")
     #create pdf
     try:
-        create_pdf_file(path_clone, repo_url)
+        create_pdf_file(path_clone, repo_url, branch)
     except Exception as error:
         repo = Repository.query.filter_by(fork_url=repo_url).first()
         repo.status = "error:pdfcreation:"+str(error)
@@ -619,7 +640,7 @@ def git_push(path_clone_git, commit_msg):
     repo.index.add("*")
     repo.index.commit(commit_msg)
     origin = repo.remote(name='origin')
-    origin.push()
+    origin.push("patch-1:master", force=True)
 
 @mod_github.route('/publish/', methods=['GET'])
 @jwt_required
